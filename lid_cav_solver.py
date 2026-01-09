@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from advective import advective
-from set_dirichlet_bc import set_Dirichlet_BC
+from set_dirichlet_bc_1 import set_Dirichlet_BC
 from viscous import viscous
 from solve_poisson import Solve_Poisson
 from velocityfieldplot import velocityField
@@ -20,7 +20,7 @@ def main():
     dy = 1.0 / Ny
     dz = 1.0 / Nz
     
-    Re = 1000.0 # Reynolds number
+    Re = 500.0 # Reynolds number
 
     # Velocity fields (staggered)
     U = np.zeros((Nx - 1, Ny, Nz))      # u-velocity at x-faces

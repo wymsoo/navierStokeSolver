@@ -7,8 +7,8 @@ def set_Dirichlet_BC(U, V, W):
     # Apply east and west boundaries for U
     Ufront = np.zeros((1, lenU[1], lenU[2])) # Set the x-boundary to zero (no-slip condition)
     Uback = np.zeros((1, lenU[1], lenU[2])) 
-    U = np.concatenate((Ufront, U), axis=0) 
-    U = np.concatenate((U, Uback), axis=0)
+    U = np.concatenate((Uback, U), axis=0) 
+    U = np.concatenate((U, Ufront), axis=0)
 
 
     
@@ -22,7 +22,8 @@ def set_Dirichlet_BC(U, V, W):
     
     # Apply front and back boundaries for U
     lenU = U.shape
-    Unorth = -U[:, :, -1].reshape((lenU[0],lenU[1],1))  
+    Unorth = 2*np.ones((lenU[0], lenU[1], 1)) - U[:, :, -1].reshape((lenU[0],lenU[1],1)) 
+    # Unorth = -U[:, :, -1].reshape((lenU[0],lenU[1],1))  
     Usouth = -U[:, :, 0].reshape((lenU[0],lenU[1],1)) 
     U = np.concatenate((Usouth, U), axis=2)
     U = np.concatenate((U, Unorth), axis=2)
@@ -32,7 +33,8 @@ def set_Dirichlet_BC(U, V, W):
     lenV = V.shape
     
     # Apply north and south boundaries for V
-    Vnorth = np.ones((lenV[0], lenV[1], 1)) - V[:, :, -1].reshape((lenV[0],lenV[1],1)) 
+    # Vnorth = 2*np.ones((lenV[0], lenV[1], 1)) - V[:, :, -1].reshape((lenV[0],lenV[1],1)) 
+    Vnorth= -V[:, :, -1].reshape((lenV[0],lenV[1],1))
     Vsouth= -V[:, :, 0].reshape((lenV[0],lenV[1],1))
     V = np.concatenate((Vsouth, V), axis=2)
     V = np.concatenate((V, Vnorth), axis=2)
@@ -72,7 +74,7 @@ def set_Dirichlet_BC(U, V, W):
     
     # Apply east and west boundaries for W
     Wfront = -W[-1, :, :].reshape((1,lenW[1],lenW[2]))
-    Wback = -W[1, :, :].reshape((1,lenW[1],lenW[2]))
+    Wback = -W[0, :, :].reshape((1,lenW[1],lenW[2]))
     W = np.concatenate((Wback, W), axis=0)
     W = np.concatenate((W, Wfront), axis=0)
     

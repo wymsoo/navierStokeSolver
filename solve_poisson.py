@@ -2,7 +2,7 @@ import numpy as np
 from scipy.sparse.linalg import spsolve
 from laplacian import Laplacian
 from divergence import div
-from set_dirichlet_bc import set_Dirichlet_BC
+from set_dirichlet_bc_1 import set_Dirichlet_BC
 
 
 def Solve_Poisson(Ustar: np.ndarray, Vstar: np.ndarray, Wstar: np.ndarray,

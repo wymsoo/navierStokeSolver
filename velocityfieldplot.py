@@ -9,9 +9,9 @@ def velocityField(U, V, W, P, Nx, Ny, Nz, time, H):
     
     # Convert staggered to collocated for visualization
     Uplot, Vplot, Wplot = stagger_back(U, V, W)
-    Uplot = np.transpose(Uplot, (1, 0, 2))
-    Vplot = np.transpose(Vplot, (1, 0, 2))
-    Wplot = np.transpose(Wplot, (1, 0, 2))
+    # Uplot = np.transpose(Uplot, (1, 0, 2))
+    # Vplot = np.transpose(Vplot, (1, 0, 2))
+    # Wplot = np.transpose(Wplot, (1, 0, 2))
     
     # Create meshgrid for quiver
     x = np.arange(0, Nx, H)
@@ -99,25 +99,25 @@ def velocityField(U, V, W, P, Nx, Ny, Nz, time, H):
     ax_yz = fig.add_subplot(2, 2, 4)
     
     z_2d = np.arange(0, Nz)
-    X_yz, Z_yz = np.meshgrid(y_2d, z_2d, indexing='ij')
+    Y_yz, Z_yz = np.meshgrid(y_2d, z_2d, indexing='ij')
     
-    U_yz = Uplot[mid_x,::, ::]
+    V_yz = Uplot[mid_x,::, ::]
     W_yz = Wplot[mid_x,::, ::]
     
     # Calculate velocity magnitude for colormap
-    vel_mag_yz = np.sqrt(U_yz**2 + W_yz**2)
+    vel_mag_yz = np.sqrt(V_yz**2 + W_yz**2)
     normyz = plt.Normalize(vmin=0, vmax=np.round(np.max(vel_mag_yz),6))
     colormapyz = plt.cm.plasma(normyz(vel_mag_yz))
 
     for i in range(0, Ny):
         for j in range(0, Ny):
-            quiver_yz = ax_yz.quiver(X_yz, Z_yz, U_yz, W_yz, color=colormapyz[i,j])
+            quiver_yz = ax_yz.quiver(Y_yz, Z_yz, V_yz, W_yz, color=colormapyz[i,j])
 
     ax_yz.set_aspect('equal', adjustable='box')
     ax_yz.set_xlabel('Y')
     ax_yz.set_ylabel('Z')
     ax_yz.set_title(f'YZ Plane at Y={mid_y/Ny:.2f} (t = {time:.3f})')
-    ax_yz.set_xlim(0, Nx)
+    ax_yz.set_xlim(0, Ny)
     ax_yz.set_ylim(0, Nz)
     cbar_yz = fig.colorbar(plt.cm.ScalarMappable(norm=normyz, cmap='plasma'), ax=ax_yz, boundaries=np.linspace(0,np.round(np.max(vel_mag_yz),6),5))
     cbar_yz.set_label('Velocity Magnitude')
