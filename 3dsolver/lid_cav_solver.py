@@ -20,7 +20,7 @@ def main():
     dy = 1.0 / Ny
     dz = 1.0 / Nz
     
-    Re = 500.0 # Reynolds number
+    Re = 1000.0 # Reynolds number
 
     # Velocity fields (staggered)
     U = np.zeros((Nx - 1, Ny, Nz))      # u-velocity at x-faces
@@ -28,7 +28,7 @@ def main():
     W = np.zeros((Nx, Ny, Nz - 1))      # w-velocity at z-faces
     
     # Number of iterations
-    timesteps = 10
+    timesteps = 100
     H = 5  # Subsampling for visualization
     
     # Time iteration loop
@@ -65,7 +65,6 @@ def main():
         V = Vstar - dt * Py
         W = Wstar - dt * Pz
 
-        print("U:", U)
         
         # Visualization
         if i % 1 == 0:
