@@ -22,7 +22,7 @@ def set_Dirichlet_BC(U, V):
     lenU = U.shape
     # Ueast = np.zeros((1, lenU[1])) # set the last row of velocity field to be north boundary
     # Uwest = np.zeros((1, lenU[1])) # set the first row of velocity field to be south boundary
-    Uwest = np.zeros((1, lenU[1])) #periodic boundary conditions
+    Uwest = np.zeros((1, lenU[1]))+g*dt #periodic boundary conditions
     Ueast = U[-1,:].reshape((1, lenU[1])) #neumann boundary condition: boundary = previous last cell
     U = np.concatenate((Uwest, U), axis=0)
     U = np.concatenate((U, Ueast), axis=0) #u_1/2 = c1
