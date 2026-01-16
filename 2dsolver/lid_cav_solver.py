@@ -6,11 +6,11 @@ from viscous import viscous
 from solve_poisson import Solve_Poisson
 from velocityfieldplot import velocityField
 from pressurefieldplot import PressureField
-from global_var import Nx, Ny, Re, R, G ,dx, dy, dt, timesteps, H
+from stagger import stagger_back
+from global_var import Nx, Ny, Re, R, G ,dx, dy, dt, timesteps, H, L
 
 
 def main():
-
 
     # Velocity fields (staggered)
     U = np.zeros((Nx - 1, Ny))      # u-velocity at x-faces
@@ -29,13 +29,11 @@ def main():
         
         # Viscous terms
         viscousU, viscousV = viscous(Ubc, Vbc, Re, dx, dy)
-        # print(viscousU*dt)
         
 
         Ustar = U + advectU * dt + viscousU * dt
         Vstar = V + advectV * dt + viscousV * dt
 
-        
         # Solve Poisson's equation for pressure
         P = Solve_Poisson(Ustar, Vstar, dx, dy, Nx, Ny, dt)
         
@@ -63,8 +61,20 @@ def main():
     
     # Final time adjustment
     time -= dt
-    
-    # plt.show()
+
+    y = np.linspace(-R/2,R/2,Ny)
+    stag_U, stag_V = stagger_back(U, V)
+    print(stag_U)
+    V_mag = np.sqrt(stag_U**2+stag_V**2)
+    V_avg = np.mean(V_mag,axis=0)
+    print(V_avg.shape)
+
+    plt.plot(y,V_avg)
+    plt.title("Velocity Magnitude plotted against radius")
+    plt.xlabel('y')
+    plt.ylabel('velocity magnitude')
+    plt.show()
+
     print("Simulation completed.")
 
 

@@ -37,5 +37,5 @@ def velocityField(U, V, P, Nx, Ny, time, H):
 
     plt.suptitle(f'Velocity and Pressure Field at Time = {time:.2f}', fontsize=14)
     plt.tight_layout()
-    plt.savefig(f'../velocity/graph_time_{int(time*1000)}.png')
+    plt.savefig(f'../velocity/graph_time_{int(time*1000000)}.png')
     plt.close()
