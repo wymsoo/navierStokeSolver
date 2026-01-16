@@ -6,30 +6,15 @@ from viscous import viscous
 from solve_poisson import Solve_Poisson
 from velocityfieldplot import velocityField
 from pressurefieldplot import PressureField
+from global_var import Nx, Ny, Re, R, G ,dx, dy, dt, timesteps, H
 
 
 def main():
-    # Parameters
-    dt = 0.01
-    
-    # Grid size
-    Nx = 31
-    Ny = 31
-    dx = 1.0 / Nx
-    dy = 1.0 / Ny
 
-
-    Re = 500 # Reynolds number
-    rho = 900
-    G = 9.81
 
     # Velocity fields (staggered)
     U = np.zeros((Nx - 1, Ny))      # u-velocity at x-faces
     V = np.zeros((Nx, Ny - 1))      # v-velocity at y-faces
-    
-    # Number of iterations
-    timesteps = 10
-    H = 5  # Subsampling for visualization
     
     # Time iteration loop
     time = dt
@@ -40,13 +25,14 @@ def main():
         
         # Non-linear terms
         advectU, advectV = advective(Ubc, Vbc, dx, dy)
+        # advective terms are zero
         
         # Viscous terms
         viscousU, viscousV = viscous(Ubc, Vbc, Re, dx, dy)
         # print(viscousU*dt)
         
 
-        Ustar = U + advectU * dt + viscousU * dt + G*dt
+        Ustar = U + advectU * dt + viscousU * dt
         Vstar = V + advectV * dt + viscousV * dt
 
         
@@ -62,8 +48,6 @@ def main():
         U = Ustar - dt * Px
         V = Vstar - dt * Py
         # W = Wstar - dt * Pz
-        print("U:",U)
-        print("V",V)
         V[0,0] = 0
         
         # Visualization

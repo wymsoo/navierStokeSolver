@@ -1,4 +1,5 @@
 import numpy as np 
+import global_var
 from average import average
 
 # def advective(U: np.ndarray, V: np.ndarray, W: np.ndarray,
@@ -30,8 +31,8 @@ def advective (U: np.ndarray, V: np.ndarray, dx: float, dy: float ):
     # VW = Vavgz * Wavgy
     
     # Derivatives for U component
-    USQRDx = np.diff(Usquared, axis=0) / dx
-    UVy = np.diff(UV, axis=1) / dy
+    USQRDx = np.diff(Usquared, axis=0) / dx #udu/dx
+    UVy = np.diff(UV, axis=1) / dy 
     # UWz = np.diff(UW, axis=2) / dz
     
     advecU = (USQRDx[:, 1:-1] + UVy[1:-1, :])
