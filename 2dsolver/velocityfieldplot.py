@@ -1,6 +1,7 @@
 import numpy as np 
 import matplotlib.pyplot as plt
 from stagger import stagger_back
+from global_var import D, L
 
 def velocityField(U, V, P, Nx, Ny, time, H):
 
@@ -10,8 +11,8 @@ def velocityField(U, V, P, Nx, Ny, time, H):
     #2D XY PLANE
     ax_xy = fig.add_subplot(1, 1, 1)
     
-    x_2d = np.arange(0, Nx)
-    y_2d = np.arange(0, Ny)
+    x_2d = np.linspace(0,L,Nx)
+    y_2d = np.linspace(-D/2,D/2,Ny)
     X_xy, Y_xy = np.meshgrid(x_2d, y_2d, indexing='ij')
     
     U_xy = Uplot[::, ::]
@@ -21,9 +22,10 @@ def velocityField(U, V, P, Nx, Ny, time, H):
     normxy = plt.Normalize(vmin=0, vmax=np.round(np.max(vel_mag_xy),6))
     colormapxy = plt.cm.plasma(normxy(vel_mag_xy))
 
-    for i in range(0, Nx):
-        for j in range(0, Ny):
-            quiver_xy = ax_xy.quiver(X_xy, Y_xy, U_xy, V_xy, color=colormapxy[i,j])
+    # for i in range(0, Nx):
+    #     for j in range(0, Ny):
+    #         quiver_xy = ax_xy.quiver(X_xy, Y_xy, U_xy, V_xy, color=colormapxy[i,j])
+    quiver_xy = ax_xy.quiver(X_xy, Y_xy, U_xy, V_xy, vel_mag_xy, cmap='plasma', norm=normxy)
 
 
     ax_xy.set_aspect('equal', adjustable='box')

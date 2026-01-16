@@ -7,7 +7,7 @@ from solve_poisson import Solve_Poisson
 from velocityfieldplot import velocityField
 from pressurefieldplot import PressureField
 from stagger import stagger_back
-from global_var import Nx, Ny, Re, R, G ,dx, dy, dt, timesteps, H, L
+from global_var import Nx, Ny, Re, D, G ,dx, dy, dt, timesteps, H, L, rho
 
 
 def main():
@@ -25,11 +25,9 @@ def main():
         
         # Non-linear terms
         advectU, advectV = advective(Ubc, Vbc, dx, dy)
-        # advective terms are zero
-        
+
         # Viscous terms
         viscousU, viscousV = viscous(Ubc, Vbc, Re, dx, dy)
-        
 
         Ustar = U + advectU * dt + viscousU * dt
         Vstar = V + advectV * dt + viscousV * dt
@@ -38,41 +36,52 @@ def main():
         P = Solve_Poisson(Ustar, Vstar, dx, dy, Nx, Ny, dt)
         
         # Compute pressure gradients
-        Px = np.diff(P, axis=0) / dx  # x-direction
-        Py = np.diff(P, axis=1) / dy  # y-direction
-        # Pz = np.diff(P, axis=2) / dz  # z-direction
+        Px = np.diff(P, axis=0) / dx
+        Py = np.diff(P, axis=1) / dy 
         
         # Apply pressure correction
         U = Ustar - dt * Px
         V = Vstar - dt * Py
-        # W = Wstar - dt * Pz
         V[0,0] = 0
         
         # Visualization
         if i % 1 == 0:
             velocityField(U, V, P, Nx, Ny, time, H)
             PressureField(P, Nx, Ny, time)
-            # plt.tight_layout()
-            # plt.draw()
-            # plt.pause(0.01) 
-        
+            
         print(f"Iteration: {i}")
         time += dt
     
     # Final time adjustment
     time -= dt
 
-    y = np.linspace(-R/2,R/2,Ny)
+    y = np.linspace(-D/2,D/2,Ny)
     stag_U, stag_V = stagger_back(U, V)
-    print(stag_U)
     V_mag = np.sqrt(stag_U**2+stag_V**2)
     V_avg = np.mean(V_mag,axis=0)
-    print(V_avg.shape)
 
-    plt.plot(y,V_avg)
-    plt.title("Velocity Magnitude plotted against radius")
-    plt.xlabel('y')
-    plt.ylabel('velocity magnitude')
+    #benchmark
+    print("R:",D,"Y:",y)
+    V_theory = Re/4*rho*G*((D/2)**2-y**2)
+    print(V_theory)
+
+
+    fig = plt.figure()
+    ax1 = fig.add_subplot(2, 1, 1)  # First subplot in a 2x1 grid
+
+    ax1.plot(y,V_avg, label='V by solver')
+    ax1.legend()
+    ax1.set_title("Velocity Magnitude plotted against radius")
+    ax1.set_xlabel('y')
+    ax1.set_ylabel('velocity magnitude')
+
+    ax2 = fig.add_subplot(2, 1, 2)  # First subplot in a 2x1 grid
+    ax2.plot(y,V_theory, label='V theory')
+    ax2.legend()
+    ax2.set_title("Theoretical velocity Magnitude plotted against radius")
+    ax2.set_xlabel('y')
+    ax2.set_ylabel('velocity magnitude')
+
     plt.show()
 
     print("Simulation completed.")
