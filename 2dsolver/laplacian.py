@@ -1,8 +1,7 @@
 import numpy as np 
 from scipy.sparse import diags, eye, kron, csr_matrix
 
-def Laplacian(nx: int, ny: int,
-              dx: float, dy: float) -> csr_matrix:
+def Laplacian(nx: int, ny: int, dx: float, dy: float) -> csr_matrix:
 
 # Create 1D Laplacian operator in x-direction
     Ix = np.ones(nx)

@@ -3,6 +3,7 @@ from scipy.sparse.linalg import spsolve
 from laplacian import Laplacian
 from divergence import div
 from set_dirichlet_bc_1 import set_Dirichlet_BC
+from global_var import rho
 
 
 def Solve_Poisson(Ustar: np.ndarray, Vstar: np.ndarray,
@@ -27,7 +28,7 @@ def Solve_Poisson(Ustar: np.ndarray, Vstar: np.ndarray,
     
     L = L.tocsr()  # Ensure CSR format for efficient slicing
     L[0, :] = 0    # Set first row to zero
-    L[0, 0] = 1    # Set diagonal to 1
+    L[0, 0] = 1  # Set diagonal to 1
     rhs[0] = 0     # Set first RHS element to 0
 
     Pcorr = spsolve(L, rhs) 

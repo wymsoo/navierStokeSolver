@@ -1,5 +1,5 @@
 import numpy as np 
-import global_var
+from global_var import rho
 from average import average
 
 
@@ -15,7 +15,7 @@ def advective (U: np.ndarray, V: np.ndarray, dx: float, dy: float ):
     Vavgy = average(V, axis=1)
     #Vavgy = np.zeros((lenV[0],lenV[1]-1))
     Vsquared = Vavgy**2
- 
+
     # Mixed terms
     #Uavgy = np.zeros((lenU[0],lenU[1]-1))
     Uavgy = average(U, axis=1)

@@ -1,20 +1,17 @@
 import numpy as np
-from global_var import Nx, Ny, Re, D, G ,dx, rho, dt
+from global_var import Nx, Ny, Re, D, G ,dx, dy, rho, dt, viscosity
 
 def set_Dirichlet_BC(U, V):
 
     lenU = U.shape
     lenV = V.shape
 
-
     lenU = U.shape
-    Uwest = U[0,:].reshape((1,lenU[1])) + G*dt #velocity due to gravity
+    Uwest = U[0,:].reshape((1,lenU[1]))+0.1 #velocity due to gravity
     Ueast = Uwest                              #periodic boundary conditions 
     U = np.concatenate((Uwest, U), axis=0)
     U = np.concatenate((U, Ueast), axis=0)
-    print(Re*(D/2)**2/4*G*rho)
 
- 
     lenU = U.shape
     Unorth = - U[:,-1].reshape((lenU[0],1))  # for poiseuille flow, there is no slip in the top and bottom boundary
     Usouth = - U[:,0].reshape((lenU[0],1))
