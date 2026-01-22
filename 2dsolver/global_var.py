@@ -8,11 +8,11 @@ L = 0.05 # length: 1m
 # Parameters
 dt = 0.0001 #vdt ~0.1*0.01 = 0.001
 H = 1
-max_ts = 10000
+max_ts = 100000
 Nx = 11
 Ny = 11
 dx = L / Nx # 0.005
 dy = D / Ny
-epsilon = 1e-8
+epsilon = 1e-15
 
 

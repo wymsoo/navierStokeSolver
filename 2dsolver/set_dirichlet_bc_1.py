@@ -7,7 +7,7 @@ def set_Dirichlet_BC(U, V):
     lenV = V.shape
 
     lenU = U.shape
-    Uwest = U[0,:].reshape((1,lenU[1]))+0.1 #velocity due to gravity
+    Uwest = U[0,:].reshape((1,lenU[1])) + 0.1
     Ueast = Uwest                              #periodic boundary conditions 
     U = np.concatenate((Uwest, U), axis=0)
     U = np.concatenate((U, Ueast), axis=0)

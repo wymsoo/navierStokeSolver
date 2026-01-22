@@ -16,6 +16,10 @@ def main():
     V = np.zeros((Nx, Ny - 1))      # v-velocity at y-faces
     iteration = []
     loss = []
+    stag_Ux = []
+    stag_Uy = []
+    stag_Vx = []
+    stag_Vy = []
     
     # Time iteration loop
     time = dt
@@ -44,8 +48,7 @@ def main():
         
         # Visualization
         # if i % 1 == 0:
-            # velocityField(U_new, V_new, P, Nx, Ny, time, H)
-            # PressureField(P, Nx, Ny, time)
+
         
         U_loss = np.mean(abs(U_new-U))
         V_loss = np.mean(abs(V_new-V))
@@ -56,6 +59,12 @@ def main():
         if ((U_loss+V_loss)<epsilon):
             break
 
+        stag_U, stag_V = stagger_back(U, V)
+        stag_Ux.append(np.mean(np.mean(stag_U,axis=0)))
+        stag_Vx.append(np.mean(np.mean(stag_V,axis=0)))
+        stag_Uy.append(np.mean(np.mean(stag_U,axis=1)))
+        stag_Vy.append(np.mean(np.mean(stag_V,axis=1)))
+
             
         print(f"Iteration: {i}")
         time += dt
@@ -65,11 +74,15 @@ def main():
     # Final time adjustment
     time -= dt
 
+    velocityField(U, V, P, Nx, Ny, time, H)
+    PressureField(P, Nx, Ny, time)
+
     y = np.linspace(-D/2,D/2,Ny)
+    x = np.linspace(0,D,Nx)
     stag_U, stag_V = stagger_back(U, V)
     V_mag = np.sqrt(stag_U**2+stag_V**2)
-    # V_avg = np.mean(V_mag,axis=0)
-    V_avg = np.max(V_mag,axis=0)
+    V_avg = np.mean(V_mag,axis=0)
+    V_max = np.max(V_mag,axis=0)
 
     #benchmark
     print("R:",D,"Y:",y)
@@ -77,15 +90,22 @@ def main():
 
 
     fig = plt.figure()
-    ax1 = fig.add_subplot(2, 1, 1)  # First subplot in a 2x1 grid
+    ax1 = fig.add_subplot(3, 1, 1)  # First subplot in a 2x1 grid
 
     ax1.plot(y,V_avg, label='V by solver')
     ax1.legend()
-    ax1.set_title("Velocity Magnitude plotted against radius")
+    ax1.set_title("Mean Velocity plotted against radius")
     ax1.set_xlabel('y')
-    ax1.set_ylabel('velocity magnitude')
+    ax1.set_ylabel('Velocity (Using V_mean)')
 
-    ax2 = fig.add_subplot(2, 1, 2)  # First subplot in a 2x1 grid
+    ax9 = fig.add_subplot(3, 1, 2)
+    ax9.plot(y,V_max, label='V by solver')
+    ax9.legend()
+    ax9.set_title("Mean Velocity plotted against radius")
+    ax9.set_xlabel('y')
+    ax9.set_ylabel('Velocity (Using V_max)')
+
+    ax2 = fig.add_subplot(3, 1, 3)  # First subplot in a 2x1 grid
     ax2.plot(y,V_theory, label='V theory')
     ax2.legend()
     ax2.set_title("Theoretical velocity Magnitude plotted against radius")
@@ -94,10 +114,48 @@ def main():
 
     plt.show()
 
+    fig3 = plt.figure()
+    ax7 = fig3.add_subplot(2, 1, 1)  # First subplot in a 2x1 grid
+
+    ax7.plot(y,np.transpose(stag_U))
+    ax7.set_title("U at different x values plotted against y")
+    ax7.set_xlabel('y')
+    ax7.set_ylabel('U along y-axis')
+
+    ax8 = fig3.add_subplot(2, 1, 2)  # First subplot in a 2x1 grid
+    ax8.plot(y,np.transpose(stag_V))
+    ax8.set_title("V at different x values plotted against y")
+    ax8.set_xlabel('y')
+    ax8.set_ylabel('V along y-axis')
+
+    plt.show()
+
     plt.plot(iteration,loss,label='total loss')
     plt.xlabel('iterations')
     plt.ylabel('loss')
+    plt.title('Loss plotted against iterations')
     plt.show()
+
+    fig2 = plt.figure()
+    ax3 = fig2.add_subplot(2,2,1)
+    ax3.plot(iteration, stag_Ux)
+    ax3.set_xlabel('iterations')
+    ax3.set_ylabel('Mean U along x-axis')
+    ax4 = fig2.add_subplot(2,2,2)
+    ax4.plot(iteration, stag_Vx)
+    ax4.set_xlabel('iterations')
+    ax4.set_ylabel('Mean V along x-axis')
+    ax5 = fig2.add_subplot(2,2,3)
+    ax5.plot(iteration, stag_Uy)
+    ax5.set_xlabel('iterations')
+    ax5.set_ylabel('Mean U along y-axis')
+    ax6 = fig2.add_subplot(2,2,4)
+    ax6.plot(iteration, stag_Vy)
+    ax6.set_xlabel('iterations')
+    ax6.set_ylabel('Mean V along y-axis')
+
+    plt.show()
+
 
     print("Simulation completed.")
 
