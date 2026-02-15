@@ -6,20 +6,15 @@ from set_dirichlet_bc_1 import set_Dirichlet_BC
 from global_var import rho
 
 
-def Solve_Poisson(Ustar: np.ndarray, Vstar: np.ndarray,
-                  dx: float, dy: float,
-                  Nx: int, Ny: int, dt: float) -> np.ndarray:
+def Solve_Poisson(Ustar: np.ndarray, Vstar: np.ndarray,dx: float, dy: float, Nx: int, Ny: int, dt: float) -> np.ndarray:
     
 
     # Apply Dirichlet boundary conditions
     Ustarbc, Vstarbc = set_Dirichlet_BC(Ustar, Vstar)
     
     # Compute divergence 
-
     RHS = (1/dt) * div(Ustarbc, Vstarbc, dx, dy)
-    
 
-    
     # Create Laplacian operator
     L = Laplacian(Nx, Ny, dx, dy)
     

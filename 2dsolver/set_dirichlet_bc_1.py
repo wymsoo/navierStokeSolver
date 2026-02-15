@@ -7,8 +7,8 @@ def set_Dirichlet_BC(U, V):
     lenV = V.shape
 
     lenU = U.shape
-    Uwest = U[0,:].reshape((1,lenU[1])) + 0.1
-    Ueast = Uwest                              #periodic boundary conditions 
+    Uwest = U[-1,:].reshape((1,lenU[1]))
+    Ueast = U[0,:].reshape((1,lenU[1]))                            #periodic boundary conditions 
     U = np.concatenate((Uwest, U), axis=0)
     U = np.concatenate((U, Ueast), axis=0)
 

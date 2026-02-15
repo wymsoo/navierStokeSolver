@@ -1,5 +1,5 @@
 global dt, Nx, Ny, dx, dy, Re, rho, G, D, max_ts, H, L, viscosity, epsilon
-rho = 1400
+rho = 1000
 viscosity = 10 #viscosity of honey Pa s^-1
 Re = rho/viscosity*0.1*0.05 #= 14*0.05 = 0.7
 G = 9.81
@@ -9,8 +9,8 @@ L = 0.05 # length: 1m
 dt = 0.0001 #vdt ~0.1*0.01 = 0.001
 H = 1
 max_ts = 100000
-Nx = 11
-Ny = 11
+Nx = 31
+Ny = 31
 dx = L / Nx # 0.005
 dy = D / Ny
 epsilon = 1e-15

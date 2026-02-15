@@ -1,0 +1,8 @@
+import matplotlib.pyplot as plt
+
+def plot_loss(iteration, loss):
+    plt.plot(iteration,loss,label='total loss')
+    plt.xlabel('iterations')
+    plt.ylabel('loss')
+    plt.title('Loss plotted against iterations')
+    plt.show()
