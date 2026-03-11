@@ -5,7 +5,7 @@ from stagger import stagger_back
 def velocityField(U, V, P, Nx, Ny, time, H):
 
     fig = plt.figure(figsize=(18, 12))
-    ax2d = fig.add_subplot(2, 2, 1)
+    # ax2d = fig.add_subplot(2, 2, 1)
     
     # Convert staggered to collocated for visualization
     Uplot, Vplot = stagger_back(U, V)
@@ -14,28 +14,28 @@ def velocityField(U, V, P, Nx, Ny, time, H):
     # Wplot = np.transpose(Wplot, (1, 0, 2))
     
     # Create meshgrid for quiver
-    x = np.arange(0, Nx, H)
-    y = np.arange(0, Ny, H)
-    X, Y = np.meshgrid(x, y, indexing='ij')
+    # x = np.arange(0, Nx, H)
+    # y = np.arange(0, Ny, H)
+    # X, Y = np.meshgrid(x, y, indexing='ij')
     
-    # Subsample for visualization
-    U_subsampled = Uplot[::H, ::H]
-    V_subsampled = Vplot[::H, ::H]
+    # # Subsample for visualization
+    # U_subsampled = Uplot[::H, ::H]
+    # V_subsampled = Vplot[::H, ::H]
 
-    ax2d.quiver(X, Y, U_subsampled, V_subsampled,alpha=0.6)
+    # ax2d.quiver(X, Y, U_subsampled, V_subsampled,alpha=0.6)
     
-    ax2d.set_xlabel('X')
-    ax2d.set_ylabel('Y')
-    ax2d.set_title(f'3D Flow field at time = {time:.3f}')
-    ax2d.set_xlim(0, Nx)
-    ax2d.set_ylim(0, Ny)
+    # ax2d.set_xlabel('X')
+    # ax2d.set_ylabel('Y')
+    # ax2d.set_title(f'3D Flow field at time = {time:.3f}')
+    # ax2d.set_xlim(0, Nx)
+    # ax2d.set_ylim(0, Ny)
 
     mid_x = Nx //2 
     mid_y = Ny // 2
     
 
     #2D XY PLANE
-    ax_xy = fig.add_subplot(2, 2, 2)
+    ax_xy = fig.add_subplot(1,1,1)
     
     x_2d = np.arange(0, Nx)
     y_2d = np.arange(0, Ny)
@@ -64,5 +64,5 @@ def velocityField(U, V, P, Nx, Ny, time, H):
 
     plt.suptitle(f'Velocity and Pressure Field at Time = {time:.2f}', fontsize=14)
     plt.tight_layout()
-    plt.savefig(f'../velocity/graph_time_{int(time*1000)}.png')
+    plt.savefig(f'../velocity/graph_time_{int(time*1000000)}.png')
     plt.close()

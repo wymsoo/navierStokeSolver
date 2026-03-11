@@ -14,7 +14,6 @@ def compare_with_theory(U,V):
     #benchmark
     V_theory = -1/viscosity/2*rho*G*(y**2-(D/2)**2)
 
-
     fig = plt.figure()
     ax1 = fig.add_subplot(2, 1, 1)  # First subplot in a 2x1 grid
 

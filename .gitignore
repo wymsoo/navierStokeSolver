@@ -4,3 +4,6 @@ __pycache__/
 
 pressure/
 velocity/
+velocity_rho_mu/
+
+output/

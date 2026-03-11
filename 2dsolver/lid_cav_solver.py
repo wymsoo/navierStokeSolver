@@ -13,7 +13,11 @@ from global_var import Nx, Ny, Re, D, G ,dx, dy, dt, max_ts, H, L, rho, viscosit
 import os
 
 def main():
-
+    P = np.zeros((Nx, Ny))
+    y = np.linspace(-D/2,D/2,Ny)
+    x = np.linspace(0,D,Nx)
+    divFreePressure = P+rho*G*x #added divergence Free pressure
+    print(divFreePressure)
     # Velocity fields (staggered)
     U = np.zeros((Nx - 1, Ny))      # u-velocity at x-faces
     V = np.zeros((Nx, Ny - 1))      # v-velocity at y-faces
@@ -38,16 +42,20 @@ def main():
         Ustar = U + advectU * dt + viscosity/rho * viscousU * dt + G*dt
         Vstar = V + advectV * dt + viscosity/rho * viscousV * dt
 
-
         # Solve Poisson's equation for pressure
-        P = Solve_Poisson(Ustar, Vstar, dx, dy, Nx, Ny, dt)    
+        P = Solve_Poisson(Ustar, Vstar, dx, dy, Nx, Ny, dt, pressure=divFreePressure) 
+        # print("Pressure", P)
         # Compute pressure gradients
         Px = np.diff(P, axis=0) / dx
         Py = np.diff(P, axis=1) / dy 
+        # print("Pressure Gradient", Px)
+        # print("Pressure Gradient Y", Py)
         
         # Apply pressure correction
-        U_new = Ustar - dt * Px/rho
-        V_new = Vstar - dt * Py/rho
+        # U_new = Ustar - dt * Px/rho
+        # V_new = Vstar - dt * Py/rho
+        U_new = Ustar
+        V_new = Vstar
     
         U_loss = np.sum((U_new-U)**2/(Nx*Ny)) #MSE
         V_loss = np.sum((V_new-V)**2/(Nx*Ny))
@@ -63,24 +71,30 @@ def main():
         iteration.append(i)
         loss.append(total_loss)
     
+        # velocityField(U, V, P, Nx, Ny, time, H)
+        # PressureField(P, Nx, Ny, time)
+        if (i%50==0):
+        #     velocityField(U,V,P, Nx, Ny, time, H)
+
+            np.savetxt(f"output/u_velocity_field/u_velocity_t={i}.txt", U)
+                # file.write("U_velocity_field") # \t for tab delimiter
+                # file.write(f"{U}\n")
+
+            np.savetxt(f"output/v_velocity_field/v_velocity_t={i}.txt", V)
+                # file.write("V_velocity_field") # \t for tab delimiter
+                # file.write(f"{V}\n")
+            
+            np.savetxt(f"output/pressure_field/pressure_field_t={i}.txt", P)
+                # file.write("Pressure_field") # \t for tab delimiter
+                # file.write(f"{P}\n")
+        
+
     # Final time adjustment
     time -= dt
-
-    # velocityField(U, V, P, Nx, Ny, time, H)
-    # PressureField(P, Nx, Ny, time)
-    with open("output/u_velocity.txt", "w") as file:
-        file.write("U_velocity_field") # \t for tab delimiter
-        file.write(f"{U}\n")
-
-    with open("output/v_velocity.txt", "w") as file:
-        file.write("V_velocity_field") # \t for tab delimiter
-        file.write(f"{V}\n")
-    
-    with open("output/pressure_field.txt", "w") as file:
-        file.write("Pressure_field") # \t for tab delimiter
-        file.write(f"{P}\n")
-
+    velocityField(U,V,P, Nx, Ny, time, H)
+    compare_with_theory(U,V)
     print("Simulation completed.")
+
 
 
 if __name__ == "__main__":

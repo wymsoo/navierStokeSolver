@@ -3,7 +3,6 @@ from scipy.sparse import diags, eye, kron, csr_matrix
 
 def Laplacian(nx: int, ny: int, dx: float, dy: float) -> csr_matrix:
 
-# Create 1D Laplacian operator in x-direction
     Ix = np.ones(nx)
     Dxx = diags([Ix, -2*Ix, Ix], [-1, 0, 1], shape=(nx, nx), format='csr')
     Dxx[0, 0] = -1
@@ -20,14 +19,6 @@ def Laplacian(nx: int, ny: int, dx: float, dy: float) -> csr_matrix:
     Dyy[-1, -1] = -1
     Dyy = Dyy / (dy**2)
     
-
-    # Iz = np.ones(nz)
-    # Dzz = diags([Iz, -2*Iz, Iz], [-1, 0, 1], shape=(nz, nz), format='csr')
-    # Dzz[0, 0] = -1
-    # Dzz[0, 1] = 1
-    # Dzz[-1, -2] = 1
-    # Dzz[-1, -1] = -1
-    # Dzz = Dzz / (dz**2)
     
     # Create identity matrices
     Ix_sparse = eye(nx, format='csr')
@@ -40,5 +31,6 @@ def Laplacian(nx: int, ny: int, dx: float, dy: float) -> csr_matrix:
     # term3 = kron(Ix_sparse, kron(Iy_sparse, Dzz))
 
     L = term1 + term2
+    # print("Laplacian", L)
     
     return L

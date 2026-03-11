@@ -13,14 +13,16 @@ def main():
     dt = 0.01
     
     # Grid size
-    Nx = 11
-    Ny = 11
+    Nx = 21
+    Ny = 21
 
     dx = 1.0 / Nx
     dy = 1.0 / Ny
 
+    G = 9.81
+    rho = 1000
     
-    Re = 1000.0 # Reynolds number
+    Re = 500.0 # Reynolds number
 
     # Velocity fields (staggered)
     U = np.zeros((Nx - 1, Ny))      # u-velocity at x-faces
@@ -44,8 +46,9 @@ def main():
         viscousU, viscousV = viscous(Ubc, Vbc, Re, dx, dy)
         
         # Compute intermediate velocities
-        Ustar = U + advectU * dt + viscousU * dt
+        Ustar = U + advectU * dt + viscousU * dt + G*dt
         Vstar = V + advectV * dt + viscousV * dt
+   
         
         # Solve Poisson's equation for pressure
         P = Solve_Poisson(Ustar, Vstar, dx, dy, Nx, Ny, dt)
