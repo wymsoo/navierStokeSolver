@@ -6,4 +6,6 @@ pressure/
 velocity/
 velocity_rho_mu/
 
+output_startup/
+
 output/

@@ -3,8 +3,9 @@ from mpl_toolkits.mplot3d import Axes3D
 import sys; sys.path.append('../')
 import scipy.io as sio
 import itertools
-from global_var import Nx, Ny, Re, D, G ,dx, dy, dt, max_ts, H, L, rho, viscosity, epsilon, endtime, time_res
 import os
+import argparse
+import linecache
 
 
 def count_files_scandir(directory):
@@ -15,330 +16,236 @@ def count_files_scandir(directory):
                 count += 1
     return count
 
-time_len = count_files_scandir('output/u_velocity_field')
 
-# coordinate system
-
-x = np.arange(0,L,dx)
-y = np.arange(-H/2,H/2,dy)
-t = np.arange(0,endtime,dt*time_res)
-
-
-starttime = 50
-x_size = 11
-y_size = 11
-# U = np.zeros((time_len,Nx-1,Ny)) #(time,x-1,y)
-U = np.zeros((1,Ny)) #(time,x-1,y)
-# V = np.zeros((time_len,Nx,Ny-1)) #(time,x,y-1)
-V = np.zeros((1,Ny-1)) #(time,x,y-1)
-P = np.zeros((1,Ny)) #(time,x,y)
-
-# for i in range(time_len):
-#     U[i] = np.loadtxt(f"output/u_velocity_field/u_velocity_t={starttime}.txt")
-#     V[i] = np.loadtxt(f"output/v_velocity_field/v_velocity_t={starttime}.txt")
-#     P[i] = np.loadtxt(f"output/pressure_field/pressure_field_t={starttime}.txt")
-#     starttime+=time_res
-
-U_arr = np.loadtxt(f"output/u_velocity_field/u_velocity_t={time_len*starttime}.txt")
-V_arr = np.loadtxt(f"output/v_velocity_field/v_velocity_t={time_len*starttime}.txt")
-P_arr = np.loadtxt(f"output/pressure_field/pressure_field_t={time_len*starttime}.txt")
-U = U_arr[Nx//2, :]
-V = V_arr[Nx//2, :]
-P = P_arr[Nx//2, :]
-
-
-def gradient(u, axis):
-    diff_u = np.gradient(u,axis=axis)
-    return diff_u
+def gradient(u, dt, dy):
+    ut = np.gradient(u, dt, axis=0, edge_order=2)
+    uy = np.gradient(u, dy, axis=1, edge_order=2)
+    uyy = np.gradient(uy, dy, axis=1, edge_order=2)
+    return ut, uy, uyy
 
 # Construct Operator Dictionary
 import itertools
 
-deg = 2
-dict_size = np.zeros((Nx, 36)) # 36 is counted from the number of combinations, + 8 of the single objects
+def build_dict(u, uy, u_yy):
 
-# ground truth dU/dt or dV/dt
-# u_t = gradient(U,0)[:,:,:-1] # ensure size consistency
-# print(u_t.shape)
-# v_t = gradient(V, 0)[:,:-1,:] # (51, 30, 30) # ensure size consistency
-# print("Shape of du/dt:", u_t.shape) #(51,30,30)
+    all_differentials = [u, uy, u_yy]
+    all_labels = ['u','u_y','u_yy']
 
-# u, v, p
-# u_x = gradient(U,1)
-# u_xx = gradient(u_x, 1)
-# p_x = gradient(P,1)
-# p_xx = gradient(p_x, 1)
-# u_y = gradient(U,2)
-# u_yy = gradient(u_y, 2)
-u_y = np.gradient(U)
-u_yy = np.gradient(u_y)
-v_y = np.gradient(V)
-v_yy = np.gradient(v_y)
-p_y = np.gradient(P)
-p_yy = np.gradient(p_y)
+    # Dictionary: for display
+    dictionary = {}
+    combinations = itertools.combinations(all_differentials, 2)
+    label_combinations = itertools.combinations(all_labels, 2)
 
-# v_x = gradient(V,1)
-# v_xx = gradient(v_x, 1)
-# v_y = gradient(V,2)
-# v_yy = gradient(v_y, 1)
-# p_y = gradient(P,2)
-# p_yy = gradient(p_y, 2)
-
-# print(U.shape, V.shape, u_x.shape,u_xx.shape,v_x.shape, v_xx.shape, p_x.shape, p_xx.shape, u_y.shape, u_yy.shape, v_y.shape, v_yy.shape, p_y.shape, p_yy.shape)
-# all_differentials = [U[:,:,:-1], V[:,:-1,:], u_x[:,:,:-1],u_xx[:,:,:-1], p_x[:,:-1,:-1], p_xx[:,:-1,:-1], u_y[:,:,:-1], u_yy[:,:,:-1]]
-# all_labels = ['u','v','u_x','u_xx','p_x','p_xx','u_y','u_yy']
-all_differentials = [U[:-1], V[:], p_y[:-1], p_yy[:-1], u_y[:-1], u_yy[:-1]]
-all_labels = ['u','v','p_y','p_yy','u_y','u_yy']
-
-# for diff, label in zip(all_differentials, all_labels):
-#   print(label,":",diff.shape)
-
-# Dictionary: for display
-dictionary = {}
-combinations = itertools.combinations(all_differentials, 2)
-label_combinations = itertools.combinations(all_labels, 2)
-
-# compute all product of combinations
-oper_dict = [ a*b for a, b in combinations]
-# print(len(oper_dict))
+    # compute all product of combinations
+    oper_dict = [(a*b).reshape(-1) for a, b in combinations]
 
 
-for label, oper in zip(label_combinations, oper_dict):
-    dictionary[label] = oper
+    # Use string keys for combined labels (e.g. 'u*u_y') instead of tuples
+    for label, oper in zip(label_combinations, oper_dict):
+        if isinstance(label, tuple):
+            key = f"{label[0]}*{label[1]}"
+        else:
+            key = label
+        dictionary[key] = oper
 
-# add back the single terms
-for diff, label in zip(all_differentials, all_labels):
-    oper_dict.append(diff)
-    dictionary[label] = diff
+    # add back the single terms
+    for diff, label in zip(all_differentials, all_labels):
+        oper_dict.append(diff.reshape(-1))
+        dictionary[label] = diff
 
-for key in dictionary:
-    print(key)
+    dictionary['1'] = np.ones_like(u)
+    dictionary['u**2'] = (u**2).reshape(-1)
+    oper_dict.append(np.ones_like(u).reshape(-1))
+    oper_dict.append((u**2).reshape(-1))
 
-# oper_dict = np.transpose(np.array(oper_dict),(1,0,2,3))
-oper_dict = np.transpose(np.array(oper_dict))
-print(oper_dict.shape)
+    dictionary_keys = []
+    for key in dictionary:
+        dictionary_keys.append(key)
 
 
-# dimensions (length of dictionary)
-# d = 36
-d= 21
-# Print shape information
-print("Original operdict shape:", oper_dict.shape)
-
-# Min-max normalization for the whole array
-min_val = np.min(oper_dict)
-max_val = np.max(oper_dict)
-oper_dict = (oper_dict - min_val) / (max_val - min_val)
-
-# Reshaping to ensure compatibility
-# y = u_t.reshape(51 * (Nx-1) * (Nx-1))
-
-# flatten arrays
-y = np.zeros(((Ny-1))) # du/dt = 0 due to steady flow, add small value to avoid trivial solution
-x = oper_dict.reshape((Ny-1), d)
+    # oper_dict = np.transpose(np.array(oper_dict),(1,0,2,3))
+    oper_dict = np.transpose(np.array(oper_dict))
+    return oper_dict, dictionary_keys
 
 
 
-init_weights = np.linalg.lstsq(x.T.dot(x) + 10E-5 * np.eye(d),x.T.dot(y),rcond=None)[0]
-print(x.shape)
-print(y.shape)
-print(init_weights.shape)
+def stridge1(X, Y, tol, lam=10**-8, max_iter = 100):
+    d = X.shape[1]
+    biginds = np.arange(d)  # initialise array for big indices
+    biginds_prev = biginds
 
-
-
-
-def stridge1(X, Y, penalty=10**-5, tol=5.0):
-    tolerance = 0
-    smallinds = []
-    count = 0  # initial max iterations count
-    biginds = np.zeros((d,))  # initialise array for big indices
+    #normalise theta
+    norm = np.linalg.norm(X, axis=0)
+    norm[norm<1e-16] = 1.0
+    X_norm = X/norm
 
     # Calculate initial weights
-    weights = np.linalg.lstsq(X.T.dot(X) + penalty * np.eye(d),X.T.dot(y),rcond=None)[0]
-    # Get all the indices that are larger than tolerance
-    smallinds = np.where(abs(weights) <= tol)[0]
+    weights = np.linalg.lstsq(X_norm.T @ X_norm + lam * np.eye(d), X_norm.T @ Y, rcond=None)[0]
+    # print("weights:",weights)
 
-    biginds = np.where(abs(weights) > tol)[0]
-    print("Biginds", biginds)
-    num_biginds = len(biginds)
+    if biginds.size == 0:
+        return weights
 
-    # Initialise old weights for comparison of new weights later
-    prev_weights = weights.copy()
-
-    # Loop and reduce coefficients to zero if below tolerance,
-    # until it reaches a certain number of terms
-    while (count <= 5):
-        smallinds = np.where(abs(weights) <= tol)[0]
-
-        # Check for big indices again
-        biginds = np.where(abs(weights) > tol)[0]
-
-
+    for iter in range(max_iter):
+        biginds = np.where(abs(weights) >= tol)[0]
         # If the weights do not change, break the loop
-        if (num_biginds==len(biginds)):
-            print("Tolerance too low. Weights: ", weights)
-            tolerance = -1
+        if np.array_equal(biginds, biginds_prev):
             break
-
-        if (len(biginds) == 0):
-            if count==0 :
-                print("Tolerance too high. Weights: ", weights)
-                weights = prev_weights
-                tolerance = 1
-                break
-
-        weights[smallinds] = 0
-
-        # Recalculate weights after reducing small indices to zero
+        if biginds.size==0:
+            weights[:]=0
+            break
+        biginds_prev = biginds.copy()
+        weights[:] = 0
         weights[biginds] = np.linalg.lstsq(
-            X[:, biginds].T.dot(X[:, biginds]) + penalty * np.eye(len(biginds)),
-            X[:, biginds].T.dot(y),
+            X_norm[:, biginds].T.dot(X[:, biginds]) + lam * np.eye(len(biginds)),
+            X_norm[:, biginds].T.dot(Y),
             rcond=None
         )[0]
 
-        prev_weights = weights.copy()
-        num_biginds = len(biginds)
-        count += 1
+    biginds = np.where(abs(weights)>= tol)[0]
+    if biginds.size > 0:
+        weights[:] = 0.0
+        weights[biginds] = np.linalg.lstsq(X_norm[:, biginds], Y, rcond=None)[0]
+    else:
+        weights[:] = 0.0
 
-    remaininginds = np.where(weights != 0)[0]
-    if (len(biginds)!=0):
-        weights[biginds] = np.linalg.lstsq(X[:, biginds],y,rcond=None)[0]
-        for i in remaininginds:
-            operator = list(dictionary.keys())[i]
-            print(operator)
-    # print("Weights", weights)
-    return weights, tolerance
+    return np.array(weights/norm)
 
-
-# stridge1(x, y)
-# This stridge removes one element at a time
-
-def stridge2(X, Y, penalty=10**-5, tol=5.0):
-    # Define dimensions
-    d = X.shape[1]  # Number of features
-    y = Y  # Rename for clarity
-
-    # Initialize
-    count = 0
-    smallinds = []  # List to store indices to set to zero
-
-    # Calculate initial weights
-    weights = np.linalg.lstsq(X.T.dot(X) + penalty*np.eye(d), X.T.dot(y), rcond=None)[0]
-
-    # Find initial smallest index
-    first_small = np.argmin(np.abs(weights))
-    smallinds.append(first_small)
-    print("Smallinds:", smallinds)
-
-    # Get big indices (all except the smallest)
-    biginds = np.where(np.abs(weights) != np.abs(weights[first_small]))[0]
-    print("Biginds:", biginds)
-
-    # Initialize previous weights for comparison
-    prev_weights = weights.copy()
-
-    # Main loop - remove one coefficient at a time
-    while len(biginds) >= 2 and count <= 1000:
-        # Set the small indices to zero
-        for idx in smallinds:
-            weights[idx] = 0
-
-        print("Weights after zeroing:", weights)
-
-        # Recalculate weights for big indices only
-        if len(biginds) > 0:
-            X_big = X[:, biginds]
-            weights[biginds] = np.linalg.lstsq(
-                X_big.T.dot(X_big) + penalty * np.eye(len(biginds)),
-                X_big.T.dot(y),
-                rcond=None
-            )[0]
-
-        # Find the next smallest index among the current big indices
-        if len(biginds) > 0:
-            # Get absolute weights of big indices and find smallest
-            smallest_in_big = np.argmin(np.abs(weights[biginds]))
-            # Get the actual index in original array
-            next_small = biginds[smallest_in_big]
-
-            # Add to smallinds list
-            smallinds.append(next_small)
-
-            # Update biginds - all indices not in smallinds
-            biginds = np.array([i for i in range(d) if i not in smallinds])
-
-            print(f"Iteration {count}: biginds={biginds}, smallinds={smallinds}")
-
-        # Check for convergence
-        if np.array_equal(prev_weights, weights):
-            print("Weights stopped changing - possible convergence")
-            break
-
-        prev_weights = weights.copy()
-        count += 1
-
-    remaininginds = np.where(weights != 0)[0]
-    for i in remaininginds:
-        print("Remaining Terms:")
-        operator = list(dictionary.keys())[i]
-        print(operator)
-
-    print(f"Final: {len(biginds)} big indices, {len(smallinds)} zeroed indices")
-    # return weights, smallinds, biginds
-    tolerance = 0
-    return weights, tolerance
-
-
-
-def trainStridge(X, y, tol=3.0, penalty=1e-5, print_best_tol=False):
-    d_tol = 3.0
-    max_iter = 50
-
-    # initial full ridge
+def trainStridge(X, y, tol_values, lam=1e-8, l0_penalty=1e-6, seed=0, print_best_tol=False):
+    rng = np.random.default_rng(seed)
+    n = X.shape[0]
+    rand_indices = rng.permutation(n)
+    X_train = X[rand_indices[:int(n*0.8)]]
+    X_validate = X[rand_indices[int(n*0.8):]]
+    y_train = y[rand_indices[:int(n*0.8)]]
+    y_validate = y[rand_indices[int(n*0.8):]]
+    score_best = np.inf
     w_best = np.linalg.lstsq(X, y, rcond=None)[0]
-    print(w_best)
-    err_best = np.linalg.norm(y - X @ w_best, 2) + penalty * np.count_nonzero(w_best)
+    train_err_best = np.linalg.norm(y_train - X_train @ w_best, 2) + l0_penalty * np.count_nonzero(w_best)
+    val_err_best = np.linalg.norm(y_validate - X_validate @ w_best, 2) + l0_penalty * np.count_nonzero(w_best)
     tol_best = 0
 
-    for iter in range(max_iter):
-        print(f"iter {iter}, tol={tol}, d_tol={d_tol}")
-        # calculate weights with new tolerance
-        print("TOL:", tol)
-        weights, tolerance = stridge2(X, y, penalty=penalty, tol=tol)
-        nnz = np.count_nonzero(weights)
-        err = np.linalg.norm(y - X @ weights, 2) + penalty * nnz
-        print(f"  flag={tolerance}, nnz={nnz}, err={err}")
-
-        if err <= err_best:
+    for tolerance in tol_values:
+        weights = stridge1(X_train, y_train, tolerance)
+        train_err = np.linalg.norm(y_train - X_train @ weights, 2) / np.sqrt(y_train.size)
+        val_err = np.linalg.norm(y_validate - X_validate @ weights, 2)/np.sqrt(y_validate.size)
+        score = val_err + l0_penalty * np.count_nonzero(np.abs(weights) > 1e-12)
+        if score <= score_best:
             # Improved: keep direction
-            print("error improved", err)
-            err_best = err
+            # print("error improved", train_err)
+            score_best = score
             w_best = weights
-            tol_best = tol
-            tol = tol + d_tol
-        else:
-            # No improvement: use tolerance flag to adapt tol and step size
-            if tolerance == -1:  # tolerance too low (threshold too small) → increase tol
-                d_tol *= 0.9 # steps get smaller after more iterations
-                print(f"tol = {tol} too low, increase by", d_tol)
-                tol = tol + d_tol
-            elif tolerance == 1:  # tolerance too high (threshold too large) → decrease tol
-                d_tol *= 0.9
-                print(f"tol={tol} too high, decrease by", d_tol)
-                tol = max(0.0, tol - d_tol)
-            else:
-                # tol = max([0,tol - 2*d_tol])
-                # d_tol  = 2*d_tol / (max_iter - iter)
-                print(f"normal, test if larger tolerance is possible, tol={tol}increase by ", d_tol)
-                tol = tol + d_tol
-        if err_best <= 10**-8:
+            train_err_best = train_err
+            val_err_best = val_err
+            tol_best = tolerance
+        if val_err <= 10**-8:
             break
 
 
+    # if print_best_tol:
+        # print("Optimal tolerance:", tol_best)
+
+    return w_best, tol_best, train_err_best, val_err_best
 
 
-    if print_best_tol:
-        print("Optimal tolerance:", tol_best)
+def format_equation(coefficients, descriptions, lhs="u_t", coef_cutoff=1e-10):
+    # save active coeficcients as tuples in an array
+    active = []
+    for c, name in zip(coefficients, descriptions):
+        if abs(c) > coef_cutoff:
+            active.append((c, name))
+    if not active:
+        return f"{lhs} = 0"
 
-    return w_best
+    pieces = []
+    for i, (c, name) in enumerate(active):
+        sign = "-" if c < 0 else "+"
+        mag = abs(c)
+        if name == "1":
+            term = f"{mag:.8e}*one"
+        else:
+            term = f"{mag:.8e}*{name}"
+        if i == 0:
+            pieces.append(term if c >= 0 else f"- {term}")
+        else:
+            pieces.append(f" {sign} {term}")
+    return f"{lhs} =" + "".join(pieces)
+
+
+
+if __name__ == "__main__":
+
+
+
+
+    parser = argparse.ArgumentParser(description="Learn the startup Poiseuille PDE from saved data.")
+    parser.add_argument("--input", type=str, default=os.path.join(os.path.dirname(__file__), "startup_poiseuille_data.npz"))
+    parser.add_argument("--lam", type=float, default=1e-8)
+    parser.add_argument("--tol_min", type=float, default=1e-8)
+    parser.add_argument("--tol_max", type=float, default=1e-1)
+    parser.add_argument("--num_tol", type=int, default=40)
+    parser.add_argument("--l0_penalty", type=float, default=1e-6)
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--crop_t", type=int, default=1, help="discard this many time layers near each temporal boundary")
+    parser.add_argument("--crop_y", type=int, default=2, help="discard this many spatial points near each wall")
+    args = parser.parse_args()
+
+
+    data = np.load(args.input)
+    # U = data["u"]
+    t = data["t"]
+    y = data["y"]
+    dt = float(data["dt"])
+    dy = float(data["dy"])
+    nu_true = float(data["nu"])
+    g_true = float(data["g"])
+
+    file_path = "output_startup/u_velocity_field"
+
+    time_len = count_files_scandir(f'stridge_model/{file_path}')
+    results = []
+    line_to_read = 15 # mid line of the file
+    for i in range(150,time_len+1):
+        with open(f'stridge_model/output_startup/u_velocity_field/u_velocity_t={i}.txt', 'r') as file:
+            line = linecache.getline(f'stridge_model/output_startup/u_velocity_field/u_velocity_t={i}.txt', line_to_read).strip()
+            if line:
+                str_list = line.split(' ')
+                floats = [float(i) for i in str_list]
+                results.append(floats)
+
+    U = np.array(results)
+
+
+    ut, uy, uyy = gradient(U, dt, dy)
+    t_slice = slice(args.crop_t, U.shape[0] - args.crop_t)
+    y_slice = slice(args.crop_y, U.shape[1] - args.crop_y)
+
+    u_crop = U[t_slice, y_slice]
+    ut_crop = ut[t_slice, y_slice]
+    uy_crop = uy[t_slice, y_slice]
+    uyy_crop = uyy[t_slice, y_slice]
+
+    oper_dict, dictionary = build_dict(u_crop,uy_crop,uyy_crop)
+
+    x = oper_dict[:]
+    y = ut_crop.reshape(-1)
+
+    tol_values = np.logspace(np.log10(args.tol_min), np.log10(args.tol_max), args.num_tol)
+    w_best, tol_best, err_best, val_error = trainStridge(x,y,tol_values)
+
+    print(dictionary)
+
+    print("=" * 72)
+    print("Discovered equation")
+    print(format_equation(w_best, dictionary, lhs="u_t"))
+    print("=" * 72)
+    print(f"Best tolerance      : {tol_best:.8e}")
+    print(f"Train RMSE          : {err_best:.8e}")
+    print(f"Validation RMSE     : {val_error:.8e}")
+    print(f"True equation       : u_t = {g_true:.8e} + {nu_true:.8e}*u_yy")
+    print("Estimated coefficients")
+    for c, name in zip(w_best, dictionary):
+        print(f"  {name:8s} : {c:+.8e}")
+
+
 
