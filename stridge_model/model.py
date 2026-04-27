@@ -1,5 +1,6 @@
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
+from global_var import dt, Nx, Ny, dx, dy, Re, rho, G, D, max_ts, H, L, viscosity, epsilon
 import sys; sys.path.append('../')
 import scipy.io as sio
 import itertools
@@ -175,9 +176,6 @@ def format_equation(coefficients, descriptions, lhs="u_t", coef_cutoff=1e-10):
 
 if __name__ == "__main__":
 
-
-
-
     parser = argparse.ArgumentParser(description="Learn the startup Poiseuille PDE from saved data.")
     parser.add_argument("--input", type=str, default=os.path.join(os.path.dirname(__file__), "startup_poiseuille_data.npz"))
     parser.add_argument("--lam", type=float, default=1e-8)
@@ -192,13 +190,15 @@ if __name__ == "__main__":
 
 
     data = np.load(args.input)
-    # U = data["u"]
-    t = data["t"]
-    y = data["y"]
-    dt = float(data["dt"])
-    dy = float(data["dy"])
-    nu_true = float(data["nu"])
-    g_true = float(data["g"])
+    U = data["u"]
+    # t = data["t"]
+    # y = data["y"]
+    # dt = float(data["dt"])
+    # dy = float(data["dy"])
+    # nu_true = float(data["nu"])
+    # g_true = float(data["g"])
+    nu_true = 10.0/1000
+    g_true = 9.81
 
     file_path = "output_startup/u_velocity_field"
 
@@ -214,6 +214,8 @@ if __name__ == "__main__":
                 results.append(floats)
 
     U = np.array(results)
+    print(U.shape)
+
 
 
     ut, uy, uyy = gradient(U, dt, dy)
