@@ -52,10 +52,10 @@ def main():
         # print("Pressure Gradient Y", Py)
         
         # Apply pressure correction
-        # U_new = Ustar - dt * Px/rho
-        # V_new = Vstar - dt * Py/rho
-        U_new = Ustar
-        V_new = Vstar
+        U_new = Ustar - dt * Px/rho
+        V_new = Vstar - dt * Py/rho
+        # U_new = Ustar
+        # V_new = Vstar
     
         U_loss = np.sum((U_new-U)**2/(Nx*Ny)) #MSE
         V_loss = np.sum((V_new-V)**2/(Nx*Ny))
@@ -73,18 +73,18 @@ def main():
     
         # velocityField(U, V, P, Nx, Ny, time, H)
         # PressureField(P, Nx, Ny, time)
-        if (i%50==0):
+        # if (i%1==0):
         #     velocityField(U,V,P, Nx, Ny, time, H)
 
-            np.savetxt(f"output/u_velocity_field/u_velocity_t={i}.txt", U)
+            # np.savetxt(f"2dsolver/output/u_velocity_field/u_velocity_t={i}.txt", U)
                 # file.write("U_velocity_field") # \t for tab delimiter
                 # file.write(f"{U}\n")
 
-            np.savetxt(f"output/v_velocity_field/v_velocity_t={i}.txt", V)
+            # np.savetxt(f"2dsolver/output/v_velocity_field/v_velocity_t={i}.txt", V)
                 # file.write("V_velocity_field") # \t for tab delimiter
                 # file.write(f"{V}\n")
             
-            np.savetxt(f"output/pressure_field/pressure_field_t={i}.txt", P)
+            # np.savetxt(f"2dsolver/output/pressure_field/pressure_field_t={i}.txt", P)
                 # file.write("Pressure_field") # \t for tab delimiter
                 # file.write(f"{P}\n")
         
@@ -93,7 +93,9 @@ def main():
     time -= dt
     velocityField(U,V,P, Nx, Ny, time, H)
     compare_with_theory(U,V)
+    plot_loss(iteration,loss)
     print("Simulation completed.")
+    print("REYNOLD", Re)
 
 
 

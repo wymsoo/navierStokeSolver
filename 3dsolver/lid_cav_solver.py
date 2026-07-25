@@ -67,7 +67,7 @@ def main():
 
         
         # Visualization
-        if i % 1 == 0:
+        if i % 10 == 0:
             velocityField(U, V, W, P, Nx, Ny, Nz, time, H)
             PressureField(P, Nx, Ny, Nz, time)
             # plt.tight_layout()

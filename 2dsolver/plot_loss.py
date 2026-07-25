@@ -5,4 +5,5 @@ def plot_loss(iteration, loss):
     plt.xlabel('iterations')
     plt.ylabel('loss')
     plt.title('Loss plotted against iterations')
+    plt.savefig('../poiseuille_loss.png')
     plt.show()

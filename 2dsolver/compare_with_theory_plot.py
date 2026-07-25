@@ -11,7 +11,7 @@ def compare_with_theory(U,V):
     V_avg = np.mean(V_mag,axis=0)
     V_max = np.max(V_mag,axis=0)
 
-    #benchmark
+    #benchmark: rho=1000 viscosity=10 G=9.81 D=0.05
     V_theory = -1/viscosity/2*rho*G*(y**2-(D/2)**2)
 
     fig = plt.figure()

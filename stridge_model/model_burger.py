@@ -1,13 +1,14 @@
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
-from global_var import dt, Nx, Ny, dx, dy, Re, rho, G, D, max_ts, H, L, viscosity, epsilon
 import sys; sys.path.append('../')
 import scipy.io as sio
 import itertools
 import os
 import argparse
 import linecache
-
+from scipy.io import loadmat
+import itertools
+from scipy.signal import savgol_filter
 
 def count_files_scandir(directory):
     count = 0
@@ -24,24 +25,24 @@ def gradient(u, dt, dy):
     uyy = np.gradient(uy, dy, axis=1, edge_order=2)
     return ut, uy, uyy
 
-# Construct Operator Dictionary
-import itertools
+def poly_gradient(u,dt,dy):
+    ut = np.gradient(u, dt, axis=1, edge_order=2)
+    uy = savgol_filter(u, 5, 4, delta=dy, deriv=1, axis=0)
+    uyy = savgol_filter(u, 5, 4, delta=dy, deriv=2, axis=0)
+    return ut, uy, uyy
 
 def build_dict(u, uy, u_yy):
 
     all_differentials = [u, uy, u_yy]
     all_labels = ['u','u_y','u_yy']
 
-    # Dictionary: for display
     dictionary = {}
+    oper_dict = np.zeros((8,len(u[0])*len(u[1])))
     combinations = itertools.combinations(all_differentials, 2)
     label_combinations = itertools.combinations(all_labels, 2)
 
-    # compute all product of combinations
     oper_dict = [(a*b).reshape(-1) for a, b in combinations]
 
-
-    # Use string keys for combined labels (e.g. 'u*u_y') instead of tuples
     for label, oper in zip(label_combinations, oper_dict):
         if isinstance(label, tuple):
             key = f"{label[0]}*{label[1]}"
@@ -70,7 +71,7 @@ def build_dict(u, uy, u_yy):
 
 
 
-def stridge1(X, Y, tol, lam=10**-8, max_iter = 100):
+def stridge1(X, Y, tol, lam=1e-10, max_iter = 100):
     d = X.shape[1]
     biginds = np.arange(d)  # initialise array for big indices
     biginds_prev = biginds
@@ -82,7 +83,6 @@ def stridge1(X, Y, tol, lam=10**-8, max_iter = 100):
 
     # Calculate initial weights
     weights = np.linalg.lstsq(X_norm.T @ X_norm + lam * np.eye(d), X_norm.T @ Y, rcond=None)[0]
-    # print("weights:",weights)
 
     if biginds.size == 0:
         return weights
@@ -112,7 +112,7 @@ def stridge1(X, Y, tol, lam=10**-8, max_iter = 100):
 
     return np.array(weights/norm)
 
-def trainStridge(X, y, tol_values, lam=1e-8, l0_penalty=1e-6, seed=0, print_best_tol=False):
+def trainStridge(X, y, tol_values, lam=1e-5, l0_penalty=1e-6, seed=0, print_best_tol=False):
     rng = np.random.default_rng(seed)
     n = X.shape[0]
     rand_indices = rng.permutation(n)
@@ -142,14 +142,10 @@ def trainStridge(X, y, tol_values, lam=1e-8, l0_penalty=1e-6, seed=0, print_best
         if val_err <= 10**-8:
             break
 
-
-    # if print_best_tol:
-        # print("Optimal tolerance:", tol_best)
-
     return w_best, tol_best, train_err_best, val_err_best
 
 
-def format_equation(coefficients, descriptions, lhs="u_t", coef_cutoff=1e-10):
+def format_equation(coefficients, descriptions, lhs="u_t", coef_cutoff=1e-9):
     # save active coeficcients as tuples in an array
     active = []
     for c, name in zip(coefficients, descriptions):
@@ -172,71 +168,44 @@ def format_equation(coefficients, descriptions, lhs="u_t", coef_cutoff=1e-10):
             pieces.append(f" {sign} {term}")
     return f"{lhs} =" + "".join(pieces)
 
-
+import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
+    nu_true=0.01/np.pi #viscosity/rho
 
-    parser = argparse.ArgumentParser(description="Learn the startup Poiseuille PDE from saved data.")
-    parser.add_argument("--input", type=str, default=os.path.join(os.path.dirname(__file__), "startup_poiseuille_data.npz"))
-    parser.add_argument("--lam", type=float, default=1e-8)
-    parser.add_argument("--tol_min", type=float, default=1e-8)
-    parser.add_argument("--tol_max", type=float, default=1e-1)
-    parser.add_argument("--num_tol", type=int, default=40)
-    parser.add_argument("--l0_penalty", type=float, default=1e-6)
-    parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--crop_t", type=int, default=1, help="discard this many time layers near each temporal boundary")
-    parser.add_argument("--crop_y", type=int, default=2, help="discard this many spatial points near each wall")
-    args = parser.parse_args()
+    # Load and extract data
+    mat_data = loadmat('stridge_model/burgers_shock.mat')
+    U = mat_data['usol'] #256,100
+    y = mat_data['x'] #256, 1
+    t = mat_data['t'] #100, 1
+    dt = t[31,0] - t[30,0]
+    dy = y[31,0] - y[30,0]
 
+    plt.plot(y,U[:,-1])
+    plt.show()
 
-    data = np.load(args.input)
-    U = data["u"]
-    # t = data["t"]
-    # y = data["y"]
-    # dt = float(data["dt"])
-    # dy = float(data["dy"])
-    # nu_true = float(data["nu"])
-    # g_true = float(data["g"])
-    nu_true = 10.0/1000
-    g_true = 9.81
+    ut, uy, uyy = poly_gradient(U, dt, dy)
+    t_end = 100
+    y_end = len(y)
 
-    file_path = "output_startup/u_velocity_field"
-
-    time_len = count_files_scandir(f'{file_path}')
-    results = []
-    line_to_read = 15 # mid line of the file
-    for i in range(150,time_len+1):
-        with open(f'output_startup/u_velocity_field/u_velocity_t={i}.txt', 'r') as file:
-            line = linecache.getline(f'output_startup/u_velocity_field/u_velocity_t={i}.txt', line_to_read).strip()
-            if line:
-                str_list = line.split(' ')
-                floats = [float(i) for i in str_list]
-                results.append(floats)
-
-    U = np.array(results)
-    print(U.shape)
-
-
-
-    ut, uy, uyy = gradient(U, dt, dy)
-    t_slice = slice(args.crop_t, U.shape[0] - args.crop_t)
-    y_slice = slice(args.crop_y, U.shape[1] - args.crop_y)
-
-    u_crop = U[t_slice, y_slice]
-    ut_crop = ut[t_slice, y_slice]
-    uy_crop = uy[t_slice, y_slice]
-    uyy_crop = uyy[t_slice, y_slice]
+    u_crop = U[:y_end, :t_end]
+    ut_crop = ut[:y_end, :t_end]
+    uy_crop = uy[:y_end, :t_end]
+    uyy_crop = uyy[:y_end, :t_end]
+    tol_min = 2.5e-2
+    tol_max = 5.0
+    num_tol = 50
 
     oper_dict, dictionary = build_dict(u_crop,uy_crop,uyy_crop)
 
     x = oper_dict[:]
     y = ut_crop.reshape(-1)
 
-    tol_values = np.logspace(np.log10(args.tol_min), np.log10(args.tol_max), args.num_tol)
+    tol_values = np.logspace(np.log10(tol_min), np.log10(tol_max), num_tol)
     w_best, tol_best, err_best, val_error = trainStridge(x,y,tol_values)
 
-    print(dictionary)
 
+    print(dictionary)
     print("=" * 72)
     print("Discovered equation")
     print(format_equation(w_best, dictionary, lhs="u_t"))
@@ -244,10 +213,8 @@ if __name__ == "__main__":
     print(f"Best tolerance      : {tol_best:.8e}")
     print(f"Train RMSE          : {err_best:.8e}")
     print(f"Validation RMSE     : {val_error:.8e}")
-    print(f"True equation       : u_t = {g_true:.8e} + {nu_true:.8e}*u_yy")
+    # print(f"True equation       : u_t = {g_true:.8e} + {nu_true:.8e}*u_yy")
+    print(f"True equation       : u_t = -u*u_y")
     print("Estimated coefficients")
     for c, name in zip(w_best, dictionary):
         print(f"  {name:8s} : {c:+.8e}")
-
-
-

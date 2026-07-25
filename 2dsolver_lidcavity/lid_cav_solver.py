@@ -29,7 +29,7 @@ def main():
     V = np.zeros((Nx, Ny - 1))      # v-velocity at y-faces
     
     # Number of iterations
-    timesteps = 1000
+    timesteps = 10000
     H = 5  # Subsampling for visualization
     
     # Time iteration loop
@@ -47,8 +47,7 @@ def main():
         
         # Compute intermediate velocities
         Ustar = U + advectU * dt + viscousU * dt + G*dt
-        Vstar = V + advectV * dt + viscousV * dt
-   
+        Vstar = V + advectV * dt + viscousV * dt 
         
         # Solve Poisson's equation for pressure
         P = Solve_Poisson(Ustar, Vstar, dx, dy, Nx, Ny, dt)
@@ -63,20 +62,14 @@ def main():
 
         
         # Visualization
-        if i % 1 == 0:
+        if i % 1000 == 0:
             velocityField(U, V, P, Nx, Ny, time, H)
             PressureField(P, Nx, Ny, time)
-            # plt.tight_layout()
-            # plt.draw()
-            # plt.pause(0.01) 
         
         print(f"Iteration: {i}")
         time += dt
     
     # Final time adjustment
-    time -= dt
-    
-    # plt.show()
     print("Simulation completed.")
 
 

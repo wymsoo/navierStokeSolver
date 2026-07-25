@@ -15,14 +15,14 @@ def Solve_Poisson(Ustar: np.ndarray, Vstar: np.ndarray,dx: float, dy: float, Nx:
     # Compute divergence 
     RHS = (1/dt) * div(Ustarbc, Vstarbc, dx, dy)
     # print(RHS)
-    if np.allclose(RHS, 0.0, atol=1e-8): 
-        print("RHS is div free.")
-        # 2. Check if pressure is provided and not None
-        if pressure is not None:
-            P = pressure
-            print("HI", P)
+    # if np.allclose(RHS, 0.0, atol=1e-8): 
+    #     print("RHS is div free.")
+    #     # 2. Check if pressure is provided and not None
+    #     if pressure is not None:
+    #         P = pressure
+    #         print("HI", P)
             
-    return P
+    # return P
 
 
     # Create Laplacian operator
