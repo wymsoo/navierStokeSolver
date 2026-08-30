@@ -90,35 +90,3 @@ rho,viscosity,L,D,Nx,Ny,dx,dy,u_max,Re ,dt = setup_solver_parameters(
     G=9.81,
     safety_factor=0.9
 )
-
-
-
-
-# =====================================================================
-# EXAMPLE: Testing Olive Oil in a 5cm channel vs a small 5mm channel
-# =====================================================================
-if __name__ == "__main__":
-    print("--- CASE 1: Standard 5cm Channel ---")
-    params_5cm = setup_solver_parameters(
-        rho=920.0,
-        viscosity=0.081,
-        L=0.05,
-        D=0.05,
-        Nx=31,
-        Ny=31,
-        G=9.81,
-        safety_factor=0.1
-    )
-
-    print("\n--- CASE 2: Small 5mm Micro-Channel ---")
-    params_5mm = setup_solver_parameters(
-        rho=920.0,
-        viscosity=0.081,
-        L=0.05,
-        D=0.005,  # Shrunk by factor of 10
-        Nx=31,
-        Ny=31,
-        G=9.81,
-        safety_factor=0.1
-    )
-
