@@ -1,12 +1,13 @@
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
-from global_var import dt, Nx, Ny, dx, dy, Re, rho, G, D, max_ts, H, L, viscosity, epsilon
+from global_var import dt, Nx, Ny, dx, dy, Re, rho, G, D, max_ts, H, L, viscosity, epsilon, nu
 import sys; sys.path.append('../')
 import scipy.io as sio
 import itertools
 import os
 import argparse
 import linecache
+import matplotlib.pyplot as plt
 
 
 def count_files_scandir(directory):
@@ -55,9 +56,9 @@ def build_dict(u, uy, u_yy):
         dictionary[label] = diff
 
     dictionary['1'] = np.ones_like(u)
-    dictionary['u**2'] = (u**2).reshape(-1)
+    # dictionary['u**2'] = (u**2).reshape(-1)
     oper_dict.append(np.ones_like(u).reshape(-1))
-    oper_dict.append((u**2).reshape(-1))
+    # oper_dict.append((u**2).reshape(-1))
 
     dictionary_keys = []
     for key in dictionary:
@@ -70,7 +71,7 @@ def build_dict(u, uy, u_yy):
 
 
 
-def stridge1(X, Y, tol, lam=10**-8, max_iter = 100):
+def stridge1(X, Y, tol, lam, max_iter = 100):
     d = X.shape[1]
     biginds = np.arange(d)  # initialise array for big indices
     biginds_prev = biginds
@@ -112,14 +113,20 @@ def stridge1(X, Y, tol, lam=10**-8, max_iter = 100):
 
     return np.array(weights/norm)
 
-def trainStridge(X, y, tol_values, lam=1e-8, l0_penalty=1e-6, seed=0, print_best_tol=False):
+def trainStridge(X, y, tol_values, lam, l0_penalty, seed=0, print_best_tol=False):
     rng = np.random.default_rng(seed)
-    n = X.shape[0]
-    rand_indices = rng.permutation(n)
-    X_train = X[rand_indices[:int(n*0.8)]]
-    X_validate = X[rand_indices[int(n*0.8):]]
-    y_train = y[rand_indices[:int(n*0.8)]]
-    y_validate = y[rand_indices[int(n*0.8):]]
+
+    n_samples = X.shape[0]
+    train_size = int(n_samples * 0.8)
+    X_train, X_validate = X[:train_size], X[train_size:]
+    y_train, y_validate = y[:train_size], y[train_size:]
+
+    # n = X.shape[0]
+    # rand_indices = rng.permutation(n)
+    # X_train = X[rand_indices[:int(n*0.8)]]
+    # X_validate = X[rand_indices[int(n*0.8):]]
+    # y_train = y[rand_indices[:int(n*0.8)]]
+    # y_validate = y[rand_indices[int(n*0.8):]]
     score_best = np.inf
     w_best = np.linalg.lstsq(X, y, rcond=None)[0]
     train_err_best = np.linalg.norm(y_train - X_train @ w_best, 2) + l0_penalty * np.count_nonzero(w_best)
@@ -127,7 +134,7 @@ def trainStridge(X, y, tol_values, lam=1e-8, l0_penalty=1e-6, seed=0, print_best
     tol_best = 0
 
     for tolerance in tol_values:
-        weights = stridge1(X_train, y_train, tolerance)
+        weights = stridge1(X_train, y_train, tolerance, args.lam)
         train_err = np.linalg.norm(y_train - X_train @ weights, 2) / np.sqrt(y_train.size)
         val_err = np.linalg.norm(y_validate - X_validate @ weights, 2)/np.sqrt(y_validate.size)
         score = val_err + l0_penalty * np.count_nonzero(np.abs(weights) > 1e-12)
@@ -177,48 +184,46 @@ def format_equation(coefficients, descriptions, lhs="u_t", coef_cutoff=1e-10):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Learn the startup Poiseuille PDE from saved data.")
-    parser.add_argument("--input", type=str, default=os.path.join(os.path.dirname(__file__), "startup_poiseuille_data.npz"))
-    parser.add_argument("--lam", type=float, default=1e-8)
-    parser.add_argument("--tol_min", type=float, default=1e-8)
-    parser.add_argument("--tol_max", type=float, default=1e-1)
+    # parser.add_argument("--input", type=str, default=os.path.join(os.path.dirname(__file__), "startup_poiseuille_data.npz"))
+    parser.add_argument("--lam", type=float, default=1e-9)
+    parser.add_argument("--tol_min", type=float, default=1e-6)
+    parser.add_argument("--tol_max", type=float, default=1)
     parser.add_argument("--num_tol", type=int, default=40)
     parser.add_argument("--l0_penalty", type=float, default=1e-6)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--crop_t", type=int, default=1, help="discard this many time layers near each temporal boundary")
+    parser.add_argument("--crop_t", type=int, default=800, help="discard this many time layers near each temporal boundary")
     parser.add_argument("--crop_y", type=int, default=2, help="discard this many spatial points near each wall")
     args = parser.parse_args()
 
+    nu_true = nu
+    g_true = G
 
-    data = np.load(args.input)
-    U = data["u"]
-    # t = data["t"]
-    # y = data["y"]
-    # dt = float(data["dt"])
-    # dy = float(data["dy"])
-    # nu_true = float(data["nu"])
-    # g_true = float(data["g"])
-    nu_true = 10.0/1000
-    g_true = 9.81
+    file_path = os.path.join(os.path.dirname(__file__), "output_lidcav", "u_velocity_field")
 
-    file_path = "output_startup/u_velocity_field"
-
-    time_len = count_files_scandir(f'{file_path}')
+    time_len = count_files_scandir(file_path)
     results = []
-    line_to_read = 15 # mid line of the file
-    for i in range(150,time_len+1):
-        with open(f'output_startup/u_velocity_field/u_velocity_t={i}.txt', 'r') as file:
-            line = linecache.getline(f'output_startup/u_velocity_field/u_velocity_t={i}.txt', line_to_read).strip()
-            if line:
-                str_list = line.split(' ')
-                floats = [float(i) for i in str_list]
-                results.append(floats)
+    line_to_read = 15  # mid line of the file
+    for i in range(150, time_len + 1):
+        file_name = os.path.join(file_path, f"u_velocity_t={i}.txt")
+        with open(file_name, "r") as file:
+            lines = file.readlines()
+            if line_to_read <= len(lines):
+                line = lines[line_to_read - 1].strip()
+                if line:
+                    # Each entry is separated by whitespace; convert the tokens, not the characters.
+                    floats = [float(value) for value in line.split()]
+                    results.append(floats)
 
     U = np.array(results)
     print(U.shape)
 
 
 
+
     ut, uy, uyy = gradient(U, dt, dy)
+    plt.plot(np.arange(len(uy[1000])),uy[1000,:])
+    plt.legend()
+    plt.show()
     t_slice = slice(args.crop_t, U.shape[0] - args.crop_t)
     y_slice = slice(args.crop_y, U.shape[1] - args.crop_y)
 
@@ -233,7 +238,7 @@ if __name__ == "__main__":
     y = ut_crop.reshape(-1)
 
     tol_values = np.logspace(np.log10(args.tol_min), np.log10(args.tol_max), args.num_tol)
-    w_best, tol_best, err_best, val_error = trainStridge(x,y,tol_values)
+    w_best, tol_best, err_best, val_error = trainStridge(x,y,tol_values,args.lam, args.l0_penalty)
 
     print(dictionary)
 
@@ -244,7 +249,7 @@ if __name__ == "__main__":
     print(f"Best tolerance      : {tol_best:.8e}")
     print(f"Train RMSE          : {err_best:.8e}")
     print(f"Validation RMSE     : {val_error:.8e}")
-    print(f"True equation       : u_t = {g_true:.8e} + {nu_true:.8e}*u_yy")
+    print(f"True equation       : u_t = {g_true} + {nu_true}*u_yy")
     print("Estimated coefficients")
     for c, name in zip(w_best, dictionary):
         print(f"  {name:8s} : {c:+.8e}")
