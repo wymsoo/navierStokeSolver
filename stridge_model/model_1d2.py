@@ -220,9 +220,9 @@ if __name__ == "__main__":
 
     
 
-    file_path = os.path.join(os.path.dirname(__file__), "output_lidcav", "u_velocity_field")
-    file_path_v = os.path.join(os.path.dirname(__file__), "output_lidcav", "v_velocity_field")
-    file_path_p = os.path.join(os.path.dirname(__file__), "output_lidcav", "pressure_field")
+    file_path = os.path.join(os.path.dirname(__file__), "output_4movingwalls", "u_velocity_field")
+    file_path_v = os.path.join(os.path.dirname(__file__), "output_4movingwalls", "v_velocity_field")
+    file_path_p = os.path.join(os.path.dirname(__file__), "output_4movingwalls", "pressure_field")
 
     time_len = count_files_scandir(file_path)
 

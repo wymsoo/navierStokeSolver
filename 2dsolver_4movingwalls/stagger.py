@@ -1,6 +1,7 @@
 import numpy as np 
 from average import average
 
+# def stagger_back(U: np.ndarray, V: np.ndarray, W: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 def stagger_back(U: np.ndarray, V: np.ndarray):
 
     # For U component

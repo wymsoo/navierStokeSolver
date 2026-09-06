@@ -8,7 +8,6 @@ from velocityfieldplot import velocityField
 from pressurefieldplot import PressureField
 from stagger import stagger_back
 from plot_loss import plot_loss
-from compare_with_theory_plot import compare_with_theory
 from global_var import Nx, Ny, Re, D, G ,dx, dy, dt, max_ts, H, L, rho, viscosity, epsilon
 import os
 
@@ -90,7 +89,6 @@ def main():
     # Final time adjustment
     time -= dt
     velocityField(U,V,P, Nx, Ny, time, H)
-    compare_with_theory(U,V)
     plot_loss(iteration,loss)
     print("Simulation completed.")
     print("REYNOLD", Re)

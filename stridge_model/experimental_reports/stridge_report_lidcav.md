@@ -2,6 +2,8 @@
 
 > Numerical identification of the streamwise momentum equation from saved velocity and pressure fields.
 
+![Lid-cavity velocity field](./lidcav.png)
+
 ## 1. Simulation Parameters
 
 | Quantity | Symbol | Value | Unit |

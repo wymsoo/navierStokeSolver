@@ -206,7 +206,7 @@ if __name__ == "__main__":
     nu_true = nu
     g_true = G
 
-    file_path = os.path.join(os.path.dirname(__file__), "output_2movingwalls", "u_velocity_field")
+    file_path = os.path.join(os.path.dirname(__file__), "output_poiseuille", "u_velocity_field")
 
     time_len = count_files_scandir(file_path)
     results = []

@@ -1,7 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from pathlib import Path
 from stagger import stagger_back
 from global_var import D, Nx, Ny, viscosity, rho, G
+
+PLOTS_DIR = Path(__file__).resolve().parent / 'plots'
 
 def compare_with_theory(U,V):
     y = np.linspace(-D/2,D/2,Ny)
@@ -30,5 +33,8 @@ def compare_with_theory(U,V):
     ax2.set_xlabel('y')
     ax2.set_ylabel('velocity magnitude')
 
-    plt.show()
+    PLOTS_DIR.mkdir(exist_ok=True)
+    fig.tight_layout()
+    fig.savefig(PLOTS_DIR / 'velocity_comparison.png')
+    plt.close(fig)
 

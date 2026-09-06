@@ -6,13 +6,13 @@ from viscous import viscous
 from solve_poisson import Solve_Poisson
 from velocityfieldplot import velocityField
 from pressurefieldplot import PressureField
-from stagger import stagger_back
 from plot_loss import plot_loss
-from compare_with_theory_plot import compare_with_theory
-from global_var import Nx, Ny, Re, D, G ,dx, dy, dt, max_ts, H, L, rho, viscosity, epsilon
 import os
 
+
 def main():
+    iteration = []
+    loss = []
     base_dir = os.path.dirname(os.path.abspath(__file__))
     output_dir = os.path.join(base_dir, "output")
     u_dir = os.path.join(output_dir, "u_velocity_field")
@@ -22,63 +22,70 @@ def main():
     os.makedirs(v_dir, exist_ok=True)
     os.makedirs(p_dir, exist_ok=True)
 
-    P = np.zeros((Nx, Ny))
-    y = np.linspace(-D/2,D/2,Ny)
-    x = np.linspace(0,D,Nx)
-    divFreePressure = P+rho*G*x #added divergence Free pressure
-    print(divFreePressure)
+    # Parameters
+    dt = 0.0001
+    epsilon = 5e-10
+    # Grid size
+    Nx = 31
+    Ny = 31
+    dx = 1.0 / Nx
+    dy = 1.0 / Ny
+    G = 9.81
+    rho = 1000
+    u_max = 1
+    # D = 0.005
+    D = 1.0
+    viscosity = 10
+    Re = (rho * u_max * D) / viscosity
+    print("Reynolds number=", Re)
+
     # Velocity fields (staggered)
     U = np.zeros((Nx - 1, Ny))      # u-velocity at x-faces
     V = np.zeros((Nx, Ny - 1))      # v-velocity at y-faces
-    iteration = []
-    loss = []
-    stag_Ux = []
-    stag_Uy = []
-    stag_Vx = []
-    stag_Vy = []
+    
+    # Number of iterations
+    timesteps = 10000
+    H = 5  # Subsampling for visualization
     
     # Time iteration loop
     time = dt
     
-    for i in range(1, max_ts + 1):
-
+    for i in range(1, timesteps + 1):
+        # Set Boundary Conditions
         Ubc, Vbc = set_Dirichlet_BC(U, V)
-
-        #Euler's method
+        
+        # Non-linear terms
         advectU, advectV = advective(Ubc, Vbc, dx, dy)
-        viscousU, viscousV = viscous(Ubc, Vbc, Re, dx, dy, viscosity)
-
-        Ustar = U + advectU * dt + viscosity/rho * viscousU * dt
-        Vstar = V + advectV * dt + viscosity/rho * viscousV * dt
-
+        viscousU, viscousV = viscous(Ubc, Vbc, Re, dx, dy)
+        
+        # Compute intermediate velocities
+        Ustar = U - advectU * dt + viscousU * dt
+        Vstar = V - advectV * dt + viscousV * dt 
+        
         # Solve Poisson's equation for pressure
-        P = Solve_Poisson(Ustar, Vstar, dx, dy, Nx, Ny, dt, pressure=divFreePressure) 
-        # print("Pressure", P)
+        P = Solve_Poisson(Ustar, Vstar, dx, dy, Nx, Ny, dt)
         # Compute pressure gradients
-        Px = np.diff(P, axis=0) / dx
-        Py = np.diff(P, axis=1) / dy 
-        # print("Pressure Gradient", Px)
-        # print("Pressure Gradient Y", Py)
+        Px = np.diff(P, axis=0) / dx  # x-direction
+        Py = np.diff(P, axis=1) / dy  # y-direction
         
         # Apply pressure correction
-        U_new = Ustar - dt * Px/rho
-        V_new = Vstar - dt * Py/rho
-        # U_new = Ustar
-        # V_new = Vstar
-    
+        U_new = Ustar - dt * Px / rho
+        V_new = Vstar - dt * Py / rho
+
         U_loss = np.sum((U_new-U)**2/(Nx*Ny)) #MSE
         V_loss = np.sum((V_new-V)**2/(Nx*Ny))
         total_loss = U_loss+V_loss
+        print(f"iteration{i} total loss:", total_loss)
         U = U_new
         V = V_new
 
         if ((U_loss+V_loss)<epsilon):
             break
-            
-        print(f"Iteration: {i}")
-        time += dt
+
         iteration.append(i)
         loss.append(total_loss)
+
+        time += dt
     
         # velocityField(U, V, P, Nx, Ny, time, H)
         # PressureField(P, Nx, Ny, time)
@@ -88,13 +95,15 @@ def main():
             np.savetxt(os.path.join(v_dir, f"v_velocity_t={i}.txt"), V, delimiter="\t")
             np.savetxt(os.path.join(p_dir, f"pressure_field_t={i}.txt"), P, delimiter="\t")
 
+        # print(f"Iteration: {i}")
+        time += dt
     # Final time adjustment
-    time -= dt
-    velocityField(U,V,P, Nx, Ny, time, H)
-    compare_with_theory(U,V)
     plot_loss(iteration,loss)
+    velocityField(U,V,P, Nx, Ny, time)
+    print("U_max = ", np.max(U))
+    print("V_max = ", np.max(V))
     print("Simulation completed.")
-    print("REYNOLD", Re)
+
 
 
 

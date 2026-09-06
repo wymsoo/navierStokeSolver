@@ -1,7 +1,10 @@
 import numpy as np 
 import matplotlib.pyplot as plt
+from pathlib import Path
 from stagger import stagger_back
 from global_var import D, L
+
+PLOTS_DIR = Path(__file__).resolve().parent / 'plots'
 
 def velocityField(U, V, P, Nx, Ny, time, H):
 
@@ -37,6 +40,6 @@ def velocityField(U, V, P, Nx, Ny, time, H):
 
     plt.suptitle(f'Velocity and Pressure Field at Time = {time*1000:.2f}', fontsize=14)
     plt.tight_layout()
-    plt.show()
-    # plt.savefig(f'./velocity/graph_time_{int(time*1000)}.png')
-    # plt.close()
+    PLOTS_DIR.mkdir(exist_ok=True)
+    fig.savefig(PLOTS_DIR / f'velocity_time_{int(time*1000)}.png')
+    plt.close(fig)

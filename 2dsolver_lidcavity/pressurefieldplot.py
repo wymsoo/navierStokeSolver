@@ -1,5 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from pathlib import Path
+
+PLOTS_DIR = Path(__file__).resolve().parent / 'plots'
 
 def PressureField(P, Nx, Ny, time):
 
@@ -20,5 +23,6 @@ def PressureField(P, Nx, Ny, time):
     plt.colorbar(im1, ax=ax1)
     
     plt.tight_layout()
-    plt.savefig(f'../pressure/graph_time_{int(time*1000)}.png')
-    plt.close()
+    PLOTS_DIR.mkdir(exist_ok=True)
+    fig2.savefig(PLOTS_DIR / f'pressure_time_{int(time*1000)}.png')
+    plt.close(fig2)
