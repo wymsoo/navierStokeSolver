@@ -1,9 +1,9 @@
 import numpy as np 
 import matplotlib.pyplot as plt
 from stagger import stagger_back
+from global_var import D, L
 
-
-def velocityField(U, V, P, Nx, Ny, time):
+def velocityField(U, V, P, Nx, Ny, time, H):
 
     fig = plt.figure(figsize=(18, 12))
     Uplot, Vplot = stagger_back(U, V)
@@ -35,8 +35,7 @@ def velocityField(U, V, P, Nx, Ny, time):
     cbar_xy = fig.colorbar(quiver_xy, ax=ax_xy)
     cbar_xy.set_label('Velocity Magnitude')
 
-    plt.suptitle(f'Velocity and Pressure Field at Time = {time:.2f} sec', fontsize=14)
+    plt.suptitle(f'Velocity and Pressure Field at Time = {time*1000:.2f}', fontsize=14)
     plt.tight_layout()
-    plt.show()
-    # plt.savefig(f'2dsolver_lidcavity/velocity/graph_time_{int(time)}.png')
+    # plt.savefig(f'./velocity/graph_time_{int(time*1000)}.png')
     # plt.close()

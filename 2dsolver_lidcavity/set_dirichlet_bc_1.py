@@ -25,8 +25,10 @@ def set_Dirichlet_BC(U, V):
     
     # Apply north and south boundaries for V
     # Vnorth = 2*np.ones((lenV[0], lenV[1], 1)) - V[:, :, -1].reshape((lenV[0],lenV[1],1)) 
-    Vnorth= -V[:, -1].reshape((lenV[0],1))
-    Vsouth= -V[:, 0].reshape((lenV[0],1))
+    # Vnorth= -V[:, -1].reshape((lenV[0],1))
+    # Vsouth= -V[:, 0].reshape((lenV[0],1))
+    Vnorth = np.zeros((lenV[0],1))
+    Vsouth = np.zeros((lenV[0],1))
     V = np.concatenate((Vsouth, V), axis=1)
     V = np.concatenate((V, Vnorth), axis=1)
     

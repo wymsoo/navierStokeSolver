@@ -8,7 +8,9 @@ import os
 import argparse
 import linecache
 import matplotlib.pyplot as plt
+from format_report import write_markdown_report, format_equation
 
+u_max = 1.0
 
 def count_files_scandir(directory):
     count = 0
@@ -193,12 +195,18 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--crop_t", type=int, default=800, help="discard this many time layers near each temporal boundary")
     parser.add_argument("--crop_y", type=int, default=2, help="discard this many spatial points near each wall")
+    parser.add_argument(
+        "--report",
+        type=str,
+        default=os.path.join(os.path.dirname(__file__), "stridge_model_1d_report.md"),
+        help="path for the generated Markdown report",
+    )
     args = parser.parse_args()
 
     nu_true = nu
     g_true = G
 
-    file_path = os.path.join(os.path.dirname(__file__), "output_lidcav", "u_velocity_field")
+    file_path = os.path.join(os.path.dirname(__file__), "output_2movingwalls", "u_velocity_field")
 
     time_len = count_files_scandir(file_path)
     results = []
@@ -253,6 +261,39 @@ if __name__ == "__main__":
     print("Estimated coefficients")
     for c, name in zip(w_best, dictionary):
         print(f"  {name:8s} : {c:+.8e}")
+
+    write_markdown_report(
+        args.report,
+        w_best,
+        dictionary,
+        U.shape,
+        u_crop.shape,
+        tol_best,
+        err_best,
+        val_error,
+        data_start=150,
+        crop_settings={"t": args.crop_t, "x": 0, "y": args.crop_y},
+        lam=args.lam,
+        l0_penalty=args.l0_penalty,
+        parameters={
+            "rho": (rho, "kg m$^{-3}$", "Fluid density"),
+            "viscosity": (viscosity, "Pa s", "Dynamic viscosity"),
+            "nu": (nu, "m$^2$ s$^{-1}$", "Kinematic viscosity"),
+            "u_max": (u_max, "m s$^{-1}$", "Characteristic velocity"),
+            "D": (D, "m", "Characteristic length"),
+            "Re": (Re, "dimensionless", "Reynolds number"),
+            "G": (G, "m s$^{-2}$", "Body force"),
+            "Nx": (Nx, "points", "Grid points"),
+            "Ny": (Ny, "points", "Unused transverse grid points"),
+            "dy": (dy, "m", "Grid spacing"),
+            "dt": (dt, "s", "Time step"),
+            "epsilon": (epsilon, "-", "Numerical threshold"),
+        },
+        reference_coefficients={"1": g_true, "u_yy": nu_true},
+        input_directory=file_path,
+        data_shape_labels="(t, y)",
+    )
+    print(f"Markdown report written to: {args.report}")
 
 
 

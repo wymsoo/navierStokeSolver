@@ -13,6 +13,15 @@ from global_var import Nx, Ny, Re, D, G ,dx, dy, dt, max_ts, H, L, rho, viscosit
 import os
 
 def main():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    output_dir = os.path.join(base_dir, "output")
+    u_dir = os.path.join(output_dir, "u_velocity_field")
+    v_dir = os.path.join(output_dir, "v_velocity_field")
+    p_dir = os.path.join(output_dir, "pressure_field")
+    os.makedirs(u_dir, exist_ok=True)
+    os.makedirs(v_dir, exist_ok=True)
+    os.makedirs(p_dir, exist_ok=True)
+
     P = np.zeros((Nx, Ny))
     y = np.linspace(-D/2,D/2,Ny)
     x = np.linspace(0,D,Nx)
@@ -71,22 +80,10 @@ def main():
         iteration.append(i)
         loss.append(total_loss)
     
-        # velocityField(U, V, P, Nx, Ny, time, H)
-        # PressureField(P, Nx, Ny, time)
-        # if (i%1==0):
-        #     velocityField(U,V,P, Nx, Ny, time, H)
-
-            # np.savetxt(f"2dsolver/output/u_velocity_field/u_velocity_t={i}.txt", U)
-                # file.write("U_velocity_field") # \t for tab delimiter
-                # file.write(f"{U}\n")
-
-            # np.savetxt(f"2dsolver/output/v_velocity_field/v_velocity_t={i}.txt", V)
-                # file.write("V_velocity_field") # \t for tab delimiter
-                # file.write(f"{V}\n")
-            
-            # np.savetxt(f"2dsolver/output/pressure_field/pressure_field_t={i}.txt", P)
-                # file.write("Pressure_field") # \t for tab delimiter
-                # file.write(f"{P}\n")
+        if (i % 1 == 0):
+            np.savetxt(os.path.join(u_dir, f"u_velocity_t={i}.txt"), U, delimiter="\t")
+            np.savetxt(os.path.join(v_dir, f"v_velocity_t={i}.txt"), V, delimiter="\t")
+            np.savetxt(os.path.join(p_dir, f"pressure_field_t={i}.txt"), P, delimiter="\t")
         
 
     # Final time adjustment
