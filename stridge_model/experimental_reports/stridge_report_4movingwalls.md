@@ -1,10 +1,31 @@
-# Physics Simulation and STRidge Identification Report
+# Experimental Report
+### Case: Poiseuille Flow with Moving Walls
+Description of Flow:
+This experiment studies a two-dimensional cavity flow in which all four walls move at prescribed speeds, setting the fluid into a strong recirculating motion. The moving boundaries inject momentum into the fluid and generate a nonlinear vortex structure with both shear-driven and pressure-driven effects. The objective is to identify the governing streamwise momentum equation directly from the evolving velocity and pressure fields.
 
 > Numerical identification of the streamwise momentum equation from saved velocity and pressure fields.
 
 ![4-moving-walls cavity velocity field](./4movingwalls_cavity.png)
 
-## 1. Simulation Parameters
+## 1. Governing Equation Verification
+
+### Reference equation
+
+`u_t =- 1.00000000e+00*uu_x - 1.00000000e+00*vu_y + 1.00000000e-02*u_xx + 1.00000000e-02*u_yy - 1.00000000e-03*p_x`
+
+### Learned equation
+
+`u_t =- 1.39217942e+00*uu_x - 9.75843704e-01*vu_y + 2.41619947e-02*u_xx + 1.02176557e-02*u_yy - 9.61020893e-04*p_x`
+
+| Term | Reference coefficient | Learned coefficient | Absolute error |
+|---|---:|---:|---:|
+| `uu_x` | `-1.00000000e+00` | `-1.39217942e+00` | `3.92179419e-01` |
+| `vu_y` | `-1.00000000e+00` | `-9.75843704e-01` | `2.41562962e-02` |
+| `u_xx` | `+1.00000000e-02` | `+2.41619947e-02` | `1.41619947e-02` |
+| `u_yy` | `+1.00000000e-02` | `+1.02176557e-02` | `2.17655709e-04` |
+| `p_x` | `-1.00000000e-03` | `-9.61020893e-04` | `3.89791068e-05` |
+
+## 2. Simulation Parameters
 
 | Quantity | Symbol | Value | Unit |
 |---|---:|---:|---|
@@ -22,13 +43,13 @@
 | Time step | `dt` | `1.00000000e-04` | s |
 | Numerical threshold | `epsilon` | `7.00000000e-11` | - |
 
-## 2. Numerical Discretisation
+## 3. Numerical Discretisation
 
 | Quantity | Symbol | Value | Unit |
 |---|---:|---:|---|
 | Parameters listed above are the values used by the selected solver. |  |  |  |
 
-## 3. Data and Pre-processing
+## 4. Data and Pre-processing
 
 | Quantity | Value |
 |---|---:|
@@ -41,23 +62,6 @@
 | x-boundary crop | `4` points |
 | y-boundary crop | `2` points |
 
-## 4. Governing Equation Verification
-
-### Reference equation
-
-`u_t =- 1.00000000e+00*uu_x - 1.00000000e+00*vu_y + 1.00000000e-02*u_xx + 1.00000000e-02*u_yy - 1.00000000e-03*p_x`
-
-### Learned equation
-
-`u_t =- 1.39217942e+00*uu_x - 9.75843704e-01*vu_y + 2.41619947e-02*u_xx + 1.02176557e-02*u_yy - 9.61020893e-04*p_x`
-
-| Term | Reference coefficient | Learned coefficient | Absolute error |
-|---|---:|---:|---:|
-| `uu_x` | `-1.00000000e+00` | `-1.39217942e+00` | `3.92179419e-01` |
-| `vu_y` | `-1.00000000e+00` | `-9.75843704e-01` | `2.41562962e-02` |
-| `u_xx` | `+1.00000000e-02` | `+2.41619947e-02` | `1.41619947e-02` |
-| `u_yy` | `+1.00000000e-02` | `+1.02176557e-02` | `2.17655709e-04` |
-| `p_x` | `-1.00000000e-03` | `-9.61020893e-04` | `3.89791068e-05` |
 
 ## 5. STRidge Selection and Error Metrics
 
