@@ -70,9 +70,4 @@
 | Training RMSE | `1.11757497e-13` |
 | Validation RMSE | `1.24716034e-13` |
 
-## 6. Reproducibility Notes
 
-- Input directory: `/Users/minnie/Desktop/PhysicsFYP/ns_solver/stridge_model/output_poiseuille/u_velocity_field`
-- Fields were loaded starting at saved time index `150`.
-- Derivatives were calculated using second-order edge-aware finite differences via `numpy.gradient`.
-- The learned equation is compared term-by-term with the supplied reference coefficients.

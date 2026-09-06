@@ -69,9 +69,4 @@
 | Training RMSE | `1.99802752e-02` |
 | Validation RMSE | `2.52969478e-02` |
 
-## 6. Reproducibility Notes
 
-- Input directory: `not specified`
-- Fields were loaded starting at saved time index `150`.
-- Derivatives were calculated using second-order edge-aware finite differences via `numpy.gradient`.
-- The learned equation is compared term-by-term with the supplied reference coefficients.

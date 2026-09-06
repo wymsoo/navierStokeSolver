@@ -68,10 +68,3 @@
 | L0 penalty | `1.00000000e-06` |
 | Training RMSE | `1.10494359e-02` |
 | Validation RMSE | `6.16076275e-03` |
-
-## 6. Reproducibility Notes
-
-- Input directories: `/Users/minnie/Desktop/PhysicsFYP/ns_solver/stridge_model/output_lidcav`
-- Velocity and pressure fields were loaded starting at saved time index `150`.
-- Derivatives were calculated using second-order edge-aware finite differences via `numpy.gradient`.
-- The learned equation is compared term-by-term with the reference Navier-Stokes coefficients defined in this script.
