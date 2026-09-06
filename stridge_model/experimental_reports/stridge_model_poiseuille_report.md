@@ -1,5 +1,5 @@
 # Experimental Report
-### Case: Poiseuille Flow with Moving Walls
+### Case: Poiseuille Flow
 Description of Flow:
 This case models a classical plane Poiseuille flow in a channel driven by a constant streamwise body force. The fluid is confined between two parallel no-slip walls, and the imposed forcing balances viscous diffusion to produce a smooth parabolic velocity profile along the wall-normal direction. The goal is to verify that the learned PDE reproduces this body-force-driven laminar flow from the saved field data.
 

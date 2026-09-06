@@ -11,6 +11,7 @@ dy = 1.0 / Ny
 G = 9.81
 rho = 1000
 u_max = 1
+v_max = 1
 # D = 0.005
 D = 1.0
 viscosity = 10
@@ -24,12 +25,16 @@ def write_markdown_report(path, coefficients, descriptions, data_shape,
                           validation_error, data_start, crop_settings,
                           lam, l0_penalty, parameters=None,
                           reference_coefficients=None, input_directory=None,
-                          data_shape_labels="(t, x, y)"):
+                          data_shape_labels="(t, x, y)", velocity_label="u"):
     parameters = parameters or {
         "rho": (rho, "kg m$^{-3}$", "Fluid density"),
         "viscosity": (viscosity, "Pa s", "Dynamic viscosity"),
         "nu": (nu, "m$^2$ s$^{-1}$", "Kinematic viscosity"),
-        "u_max": (u_max, "m s$^{-1}$", "Characteristic velocity"),
+        f"{velocity_label}_max": (
+            u_max if velocity_label == "u" else v_max,
+            "m s$^{-1}$",
+            "Characteristic velocity",
+        ),
         "D": (D, "m", "Characteristic length"),
         "Re": (Re, "dimensionless", "Reynolds number"),
         "G": (G, "m s$^{-2}$", "Body force"),
@@ -47,6 +52,7 @@ def write_markdown_report(path, coefficients, descriptions, data_shape,
         "u_yy": c_viscous,
         "p_x": -c_pressure,
     }
+    lhs = f"{velocity_label}_t"
     true_equation = [reference_coefficients.get(name, 0.0) for name in descriptions]
     parameter_rows = [
         f"| {label} | `{name}` | `{value:.8e}` | {unit} |"
@@ -86,11 +92,11 @@ def write_markdown_report(path, coefficients, descriptions, data_shape,
         "",
         "### Reference equation",
         "",
-        f"`{format_equation(true_equation, descriptions, lhs='u_t')}`",
+        f"`{format_equation(true_equation, descriptions, lhs=lhs)}`",
         "",
         "### Learned equation",
         "",
-        f"`{format_equation(coefficients, descriptions, lhs='u_t')}`",
+        f"`{format_equation(coefficients, descriptions, lhs=lhs)}`",
         "",
         "| Term | Reference coefficient | Learned coefficient | Absolute error |",
         "|---|---:|---:|---:|",
@@ -123,6 +129,79 @@ def write_markdown_report(path, coefficients, descriptions, data_shape,
     os.makedirs(report_directory, exist_ok=True)
     with open(path, "w", encoding="utf-8") as report_file:
         report_file.write("\n".join(report_lines))
+
+
+def write_2d_markdown_report(
+        path, u_coefficients, u_descriptions, v_coefficients, v_descriptions,
+        data_shape, crop_shape, u_tol_best, u_train_error, u_validation_error,
+        v_tol_best, v_train_error, v_validation_error, data_start,
+        crop_settings, lam, l0_penalty, parameters=None,
+        u_reference_coefficients=None, v_reference_coefficients=None,
+        input_directory=None):
+    """Write the U and V momentum equations to one Markdown report."""
+    write_markdown_report(
+        path,
+        u_coefficients,
+        u_descriptions,
+        data_shape,
+        crop_shape,
+        u_tol_best,
+        u_train_error,
+        u_validation_error,
+        data_start,
+        crop_settings,
+        lam,
+        l0_penalty,
+        parameters=parameters,
+        reference_coefficients=u_reference_coefficients,
+        input_directory=input_directory,
+        velocity_label="u",
+    )
+
+    v_reference_coefficients = v_reference_coefficients or {
+        "uv_x": -c_advective,
+        "vv_y": -c_advective,
+        "v_xx": c_viscous,
+        "v_yy": c_viscous,
+        "p_y": -c_pressure,
+    }
+    v_true_equation = [
+        v_reference_coefficients.get(name, 0.0) for name in v_descriptions
+    ]
+    v_report_lines = [
+        "",
+        "## 7. Transverse Momentum Equation",
+        "",
+        "### Reference equation",
+        "",
+        f"`{format_equation(v_true_equation, v_descriptions, lhs='v_t')}`",
+        "",
+        "### Learned equation",
+        "",
+        f"`{format_equation(v_coefficients, v_descriptions, lhs='v_t')}`",
+        "",
+        "| Term | Reference coefficient | Learned coefficient | Absolute error |",
+        "|---|---:|---:|---:|",
+    ]
+    for learned, name, expected in zip(
+            v_coefficients, v_descriptions, v_true_equation):
+        v_report_lines.append(
+            f"| `{name}` | `{expected:+.8e}` | `{learned:+.8e}` | "
+            f"`{abs(learned - expected):.8e}` |"
+        )
+    v_report_lines.extend([
+        "",
+        "### V STRidge Selection and Error Metrics",
+        "",
+        "| Metric | Value |",
+        "|---|---:|",
+        f"| Selected tolerance | `{v_tol_best:.8e}` |",
+        f"| Training RMSE | `{v_train_error:.8e}` |",
+        f"| Validation RMSE | `{v_validation_error:.8e}` |",
+        "",
+    ])
+    with open(path, "a", encoding="utf-8") as report_file:
+        report_file.write("\n".join(v_report_lines))
 
 
 def format_equation(coefficients, descriptions, lhs="u_t", coef_cutoff=1e-10):

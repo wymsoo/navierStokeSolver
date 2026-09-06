@@ -1,5 +1,5 @@
 # Experimental Report
-### Case: Poiseuille Flow with Moving Walls
+### Case: Lid-Driven Cavity
 Description of Flow:
 This case models the standard two-dimensional lid-driven cavity, in which the top wall moves tangentially while the remaining three walls remain stationary. The imposed lid motion generates a primary circulating vortex and weaker secondary recirculation regions, creating a strongly nonlinear velocity field. The experiment aims to recover the streamwise momentum equation from the recorded velocity and pressure data.
 
