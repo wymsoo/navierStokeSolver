@@ -13,8 +13,9 @@ from global_var import Nx, Ny, Re, D, G ,dx, dy, dt, max_ts, H, L, rho, viscosit
 import os
 
 def main():
+    trial = "poiseuille"
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    output_dir = os.path.join(base_dir, "output")
+    output_dir = os.path.join(os.path.dirname(base_dir), f"stridge_model/output/{trial}")
     u_dir = os.path.join(output_dir, "u_velocity_field")
     v_dir = os.path.join(output_dir, "v_velocity_field")
     p_dir = os.path.join(output_dir, "pressure_field")

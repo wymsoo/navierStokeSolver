@@ -85,8 +85,8 @@ rho,viscosity,L,D,Nx,Ny,dx,dy,u_max,Re ,dt = setup_solver_parameters(
     viscosity=0.081,
     L=0.05,
     D=0.005,  # Shrunk by factor of 10
-    Nx=31,
-    Ny=31,
+    Nx=51,
+    Ny=51,
     G=9.81,
     safety_factor=0.9
 )

@@ -229,7 +229,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_tol", type=int, default=40)
     parser.add_argument("--l0_penalty", type=float, default=1e-6)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--crop_t", type=int, default=2000, help="discard this many time layers near each temporal boundary")
+    parser.add_argument("--crop_t", type=int, default=1800, help="discard this many time layers near each temporal boundary")
     parser.add_argument("--crop_y", type=int, default=1, help="discard this many spatial points near each wall")
     parser.add_argument("--crop_x", type=int, default=1, help="discard this many spatial points near each wall")
     parser.add_argument(

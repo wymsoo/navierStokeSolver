@@ -98,12 +98,12 @@ def write_markdown_report(path, coefficients, descriptions, data_shape,
         "",
         f"`{format_equation(coefficients, descriptions, lhs=lhs)}`",
         "",
-        "| Term | Reference coefficient | Learned coefficient | Absolute error |",
+        "| Term | Reference coefficient | Learned coefficient | Percentage error |",
         "|---|---:|---:|---:|",
     ]
     for learned, name, expected in zip(coefficients, descriptions, true_equation):
         report_lines.append(
-            f"| `{name}` | `{expected:+.8e}` | `{learned:+.8e}` | `{abs(learned - expected):.8e}` |"
+            f"| `{name}` | `{expected:+.8e}` | `{learned:+.8e}` | `{abs(learned - expected)/expected*100:.8e}%` |"
         )
     report_lines.extend([
         "",
@@ -180,14 +180,14 @@ def write_2d_markdown_report(
         "",
         f"`{format_equation(v_coefficients, v_descriptions, lhs='v_t')}`",
         "",
-        "| Term | Reference coefficient | Learned coefficient | Absolute error |",
+        "| Term | Reference coefficient | Learned coefficient | Percentage error |",
         "|---|---:|---:|---:|",
     ]
     for learned, name, expected in zip(
             v_coefficients, v_descriptions, v_true_equation):
         v_report_lines.append(
             f"| `{name}` | `{expected:+.8e}` | `{learned:+.8e}` | "
-            f"`{abs(learned - expected):.8e}` |"
+            f"`{abs(learned - expected)/expected*100:.8e}%` |"
         )
     v_report_lines.extend([
         "",

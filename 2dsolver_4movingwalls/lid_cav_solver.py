@@ -13,11 +13,14 @@ import os
 def main():
     iteration = []
     loss = []
+    trial = "4movingwalls"
+    Nx = 81
+    Ny = 81
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    output_dir = os.path.join(base_dir, "output")
-    u_dir = os.path.join(output_dir, "u_velocity_field")
-    v_dir = os.path.join(output_dir, "v_velocity_field")
-    p_dir = os.path.join(output_dir, "pressure_field")
+    output_dir = os.path.join(os.path.dir(base_dir), f"stridge_model/output/{trial}")
+    u_dir = os.path.join(output_dir, f"u_velocity_field")
+    v_dir = os.path.join(output_dir, f"v_velocity_field")
+    p_dir = os.path.join(output_dir, f"pressure_field")
     os.makedirs(u_dir, exist_ok=True)
     os.makedirs(v_dir, exist_ok=True)
     os.makedirs(p_dir, exist_ok=True)
@@ -26,8 +29,7 @@ def main():
     dt = 0.0001
     epsilon = 5e-10
     # Grid size
-    Nx = 31
-    Ny = 31
+
     dx = 1.0 / Nx
     dy = 1.0 / Ny
     G = 9.81
