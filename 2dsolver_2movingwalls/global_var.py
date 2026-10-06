@@ -60,33 +60,19 @@ def setup_solver_parameters(
     dt = dt_operational
 
     return rho, viscosity,L,D,Nx,Ny,dx,dy,u_max,Re_max,dt
-    
-    # return {
-    #     "rho": rho,
-    #     "viscosity": viscosity,
-    #     "L": L,
-    #     "D": D,
-    #     "Nx": Nx,
-    #     "Ny": Ny,
-    #     "dx": dx,
-    #     "dy": dy,
-    #     "u_max": u_max,
-    #     "Re": Re_max,
-    #     "dt_limit": dt_absolute_limit,
-    #     "dt": dt_operational
-    # }
+
 G = 9.81
 max_ts = 10000
 H = 0.005
 epsilon = 1e-15
 
-rho,viscosity,L,D,Nx,Ny,dx,dy,u_max,Re ,dt = setup_solver_parameters(
+rho,viscosity,L,D,Nx,Ny,dx,dy,u_max,Re,dt = setup_solver_parameters(
     rho=920.0,
     viscosity=0.081,
     L=0.05,
     D=0.005,  # Shrunk by factor of 10
-    Nx=51,
-    Ny=51,
+    Nx=81,
+    Ny=81,
     G=9.81,
     safety_factor=0.9
 )

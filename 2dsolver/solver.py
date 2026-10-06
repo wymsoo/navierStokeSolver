@@ -92,7 +92,7 @@ def main():
     velocityField(U,V,P, Nx, Ny, time, H)
     compare_with_theory(U,V)
     plot_loss(iteration,loss)
-    print("Simulation completed.")
+    print(f"Simulation completed. File written to {output_dir}")
     print("REYNOLD", Re)
 
 

@@ -11,7 +11,7 @@ import os
 
 
 def main():
-    trial = 'lidcavity'
+    trial = 'lidcavity_81'
     iteration = []
     loss = []
     Nx = 81
