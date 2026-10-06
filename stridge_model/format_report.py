@@ -19,7 +19,7 @@ Re = (rho * u_max * D) / viscosity
 nu = viscosity/rho
 c_advective = 1
 c_pressure = 1/rho
-c_viscous = 1/Re
+c_viscous = nu
 def write_markdown_report(path, coefficients, descriptions, data_shape,
                           crop_shape, tol_best, train_error,
                           validation_error, data_start, crop_settings,

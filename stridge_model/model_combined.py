@@ -5,27 +5,30 @@ import os
 import argparse
 
 
+### Adjust these parameters according to the shape of input files
+########################################################################
+Nx = 81
+Ny = 81
 dt = 0.0001
-epsilon = 7e-11
-# Grid size
-Nx = 31
-Ny = 31
+# dt = 1e-05 # for 1d flow
 dx = 1.0 / Nx
 dy = 1.0 / Ny
+########################################################################
+
+
+epsilon = 7e-11
 G = 9.81
 rho = 1000
 u_max = 1
 v_max = 1
-# D = 0.005
-D = 1.0
+D = 0.005
+# D = 1.0
 viscosity = 10
 Re = (rho * u_max * D) / viscosity
 nu = viscosity/rho
 c_advective = 1
 c_pressure = 1/rho
-c_viscous = 1/Re
-
-
+c_viscous = nu
 
 
 
@@ -69,25 +72,23 @@ def load_case(output_directory, data_start, crop_t, crop_x, crop_y, fields=None)
     print(U.shape, V.shape, P.shape)
 
 
-    ut, uy, uyy = gradient(U, dt, dy, axis=2)
-    _, ux, uxx = gradient(U, dt, dx, axis=1)
-    vt, vy, vyy = gradient(V, dt, dy, axis=2)
-    _, vx, vxx = gradient(V, dt, dx, axis=1)
-    _, px, _ = gradient(P, dt, dx, axis=1)
-    _, py, _ = gradient(P, dt, dy, axis=2)
+    ut, uy, uyy = gradient2(U, dt, dy, axis=2)
+    _, ux, uxx = gradient2(U, dt, dx, axis=1)
+    vt, vy, vyy = gradient2(V, dt, dy, axis=2)
+    _, vx, vxx = gradient2(V, dt, dx, axis=1)
+    _, px, _ = gradient2(P, dt, dx, axis=1)
+    _, py, _ = gradient2(P, dt, dy, axis=2)
 
 
-    t_slice = slice(crop_t, U.shape[0])
-    x_slice = slice(crop_x, U.shape[1])
-    y_slice = slice(crop_y, U.shape[2])
+    t_slice = slice(crop_t, U.shape[0]-crop_t)
+    x_slice = slice(crop_x, U.shape[1]-crop_x)
+    y_slice = slice(crop_y, U.shape[2]-crop_y)
 
-    u_crop = U[t_slice, x_slice, y_slice].copy()
-    v_crop = V[t_slice, x_slice, y_slice].copy()
+    u_crop = U[t_slice, x_slice, y_slice]
+    v_crop = V[t_slice, x_slice, y_slice]
 
     # compute operator matrix and dictionary keys
     oper_dict, dictionary = build_ns_dict(
-        # u_crop[2:-2,4:-4,4:-4], # cropped to fit gradient
-        # v_crop[2:-2,4:-4,4:-4],
         u_crop,
         v_crop,
         uy[t_slice, x_slice, y_slice],
@@ -341,15 +342,15 @@ if __name__ == "__main__":
         "--input_directories",
         nargs="+",
         default=[
-            os.path.join(os.path.dirname(__file__), "output/2movingwalls"),
+            # os.path.join(os.path.dirname(__file__), "output/output_2movingwalls"),
             os.path.join(os.path.dirname(__file__), "output/4movingwalls_80"),
-            os.path.join(os.path.dirname(__file__), "output/lidcavity"),
-            os.path.join(os.path.dirname(__file__), "output/poiseuille"),
+            os.path.join(os.path.dirname(__file__), "output/lidcavity_81"),
+            # os.path.join(os.path.dirname(__file__), "output/poiseuille"),
         ],
     )
-    parser.add_argument("--crop_t", type=int, default=2500, help="discard this many time layers near each temporal boundary")
-    parser.add_argument("--crop_y", type=int, default=1, help="discard this many spatial points near each wall")
-    parser.add_argument("--crop_x", type=int, default=1, help="discard this many spatial points near each wall")
+    parser.add_argument("--crop_t", type=int, default=1000, help="discard this many time layers near each temporal boundary")
+    parser.add_argument("--crop_y", type=int, default=2, help="discard this many spatial points near each wall")
+    parser.add_argument("--crop_x", type=int, default=2, help="discard this many spatial points near each wall")
     parser.add_argument(
         "--report",
         type=str,
@@ -371,6 +372,7 @@ if __name__ == "__main__":
         )
         for output_directory in args.input_directories
     ]
+
     oper_dict = np.concatenate([result[0] for result in case_results])
     y = np.concatenate([result[1] for result in case_results])
     dictionary = case_results[0][2]
@@ -391,14 +393,18 @@ if __name__ == "__main__":
         x_v, y_v, tol_values, args.lam, args.l0_penalty
     )
 
+    datashape = [case_results[i][6] for i in range(len(args.input_directories))]
+    datashape_cropped = [case_results[i][7] for i in range(len(args.input_directories))]
+
+
     write_2d_markdown_report(
         args.report,
         w_best,
         dictionary,
         w_best_v,
         dictionary_v,
-        case_results[0][6],
-        case_results[0][7],
+        datashape,
+        datashape_cropped,
         tol_best,
         err_best,
         val_error,

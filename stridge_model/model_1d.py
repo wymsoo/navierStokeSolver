@@ -123,12 +123,6 @@ def trainStridge(X, y, tol_values, lam, l0_penalty, seed=0, print_best_tol=False
     X_train, X_validate = X[:train_size], X[train_size:]
     y_train, y_validate = y[:train_size], y[train_size:]
 
-    # n = X.shape[0]
-    # rand_indices = rng.permutation(n)
-    # X_train = X[rand_indices[:int(n*0.8)]]
-    # X_validate = X[rand_indices[int(n*0.8):]]
-    # y_train = y[rand_indices[:int(n*0.8)]]
-    # y_validate = y[rand_indices[int(n*0.8):]]
     score_best = np.inf
     w_best = np.linalg.lstsq(X, y, rcond=None)[0]
     train_err_best = np.linalg.norm(y_train - X_train @ w_best, 2) + l0_penalty * np.count_nonzero(w_best)
@@ -141,8 +135,6 @@ def trainStridge(X, y, tol_values, lam, l0_penalty, seed=0, print_best_tol=False
         val_err = np.linalg.norm(y_validate - X_validate @ weights, 2)/np.sqrt(y_validate.size)
         score = val_err + l0_penalty * np.count_nonzero(np.abs(weights) > 1e-12)
         if score <= score_best:
-            # Improved: keep direction
-            # print("error improved", train_err)
             score_best = score
             w_best = weights
             train_err_best = train_err
@@ -206,7 +198,7 @@ if __name__ == "__main__":
     nu_true = nu
     g_true = G
 
-    file_path = os.path.join(os.path.dirname(__file__), "output_poiseuille", "u_velocity_field")
+    file_path = os.path.join(os.path.dirname(__file__), "output/poiseuille", "u_velocity_field")
 
     time_len = count_files_scandir(file_path)
     results = []
