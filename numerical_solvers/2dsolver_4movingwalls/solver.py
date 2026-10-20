@@ -66,7 +66,7 @@ def main():
     dx = 1.0 / Nx
     dy = 1.0 / Ny
     G = 9.81
-    rho = 100
+    rho = 1000
     u_max = 1
     # D = 0.005
     D = 1.0
