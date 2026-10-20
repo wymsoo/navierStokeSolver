@@ -30,47 +30,47 @@
 
 | Quantity | Value |
 |---|---:|
-| Loaded field shape $(t, x, y)$ | `[(5435, 80, 80), (6613, 80, 80)]` |
-| Regression field shape $(t, x, y)$ | `[(3435, 76, 76), (4613, 76, 76)]` |
-| Regression samples | `528,645,530,945,280` |
+| Loaded field shape $(t, x, y)$ | `[(1759, 80, 80), (1647, 80, 80)]` |
+| Regression field shape $(t, x, y)$ | `[(1559, 78, 78), (1447, 78, 78)]` |
+| Regression samples | `83,501,265,423,888` |
 | Dictionary terms | `5` |
-| First saved time index | `150` |
-| Temporal crop at each boundary | `1000` layers |
-| x-boundary crop | `2` points |
-| y-boundary crop | `2` points |
+| First saved time index | `1` |
+| Temporal crop at each boundary | `100` layers |
+| x-boundary crop | `1` points |
+| y-boundary crop | `1` points |
 
 ## 4. Governing Equation Verification
 
 ### Reference equation
 
-`u_t =- 1.00000000e+00*uu_x - 1.00000000e+00*vu_y + 1.00000000e-02*u_xx + 1.00000000e-02*u_yy - 1.00000000e-03*p_x`
+`u_t =- 1.00000000e+00*uu_x - 1.00000000e+00*vu_y + 1.00000000e-01*u_xx + 1.00000000e-01*u_yy - 1.00000000e-02*p_x`
 
 ### Learned equation
 
-`u_t =- 1.16585187e+00*uu_x - 8.93109134e-01*vu_y + 1.48476314e-02*u_xx + 9.54249249e-03*u_yy - 9.57138926e-04*p_x`
+`u_t =- 1.39065963e+00*uu_x - 3.33509247e+00*vu_y + 2.73183402e-01*u_xx + 2.87097553e-01*u_yy - 2.87070088e-02*p_x`
 
 | Term | Reference coefficient | Learned coefficient | Percentage error |
 |---|---:|---:|---:|
-| `uu_x` | `-1.00000000e+00` | `-1.16585187e+00` | `-1.65851875e+01%` |
-| `vu_y` | `-1.00000000e+00` | `-8.93109134e-01` | `-1.06890866e+01%` |
-| `u_xx` | `+1.00000000e-02` | `+1.48476314e-02` | `4.84763136e+01%` |
-| `u_yy` | `+1.00000000e-02` | `+9.54249249e-03` | `4.57507510e+00%` |
-| `p_x` | `-1.00000000e-03` | `-9.57138926e-04` | `-4.28610739e+00%` |
+| `uu_x` | `-1.00000000e+00` | `-1.39065963e+00` | `-3.90659630e+01%` |
+| `vu_y` | `-1.00000000e+00` | `-3.33509247e+00` | `-2.33509247e+02%` |
+| `u_xx` | `+1.00000000e-01` | `+2.73183402e-01` | `1.73183402e+02%` |
+| `u_yy` | `+1.00000000e-01` | `+2.87097553e-01` | `1.87097553e+02%` |
+| `p_x` | `-1.00000000e-02` | `-2.87070088e-02` | `-1.87070088e+02%` |
 
 ## 5. STRidge Selection and Error Metrics
 
 | Metric | Value |
 |---|---:|
 | Regularisation parameter, $\lambda$ | `1.00000000e-08` |
-| Selected tolerance | `9.42668455e-04` |
+| Selected tolerance | `1.00000000e-02` |
 | L0 penalty | `1.00000000e-06` |
-| Training RMSE | `4.68456747e-02` |
-| Validation RMSE | `3.11297935e-02` |
+| Training RMSE | `8.75377065e-01` |
+| Validation RMSE | `6.34671243e-01` |
 
 ## 6. Reproducibility Notes
 
-- Input directory: `/Users/minnie/Desktop/PhysicsFYP/ns_solver/stridge_model/output/4movingwalls_80, /Users/minnie/Desktop/PhysicsFYP/ns_solver/stridge_model/output/lidcavity_81`
-- Fields were loaded starting at saved time index `150`.
+- Input directory: `/Users/minnie/Desktop/PhysicsFYP/ns_solver/stridge_model/output_npz/4movingwalls_81, /Users/minnie/Desktop/PhysicsFYP/ns_solver/stridge_model/output_npz/lidcavity_81`
+- Fields were loaded starting at saved time index `1`.
 - Derivatives were calculated using second-order edge-aware finite differences via `numpy.gradient`.
 - The learned equation is compared term-by-term with the supplied reference coefficients.
 
@@ -78,24 +78,24 @@
 
 ### Reference equation
 
-`v_t =- 1.00000000e+00*uv_x - 1.00000000e+00*vv_y + 1.00000000e-02*v_xx + 1.00000000e-02*v_yy - 1.00000000e-03*p_y`
+`v_t =- 1.00000000e+00*uv_x - 1.00000000e+00*vv_y + 1.00000000e-01*v_xx + 1.00000000e-01*v_yy - 1.00000000e-02*p_y`
 
 ### Learned equation
 
-`v_t =- 1.01020022e+00*uv_x - 1.20347240e+00*vv_y + 9.48017340e-03*v_xx + 1.68355624e-02*v_yy - 1.08571105e-03*p_y`
+`v_t =- 4.03184496e+00*uv_x - 7.24924486e-01*vv_y + 2.98441750e-01*v_xx + 2.88329451e-01*v_yy - 3.02961983e-02*p_y`
 
 | Term | Reference coefficient | Learned coefficient | Percentage error |
 |---|---:|---:|---:|
-| `uv_x` | `-1.00000000e+00` | `-1.01020022e+00` | `-1.02002227e+00%` |
-| `vv_y` | `-1.00000000e+00` | `-1.20347240e+00` | `-2.03472405e+01%` |
-| `v_xx` | `+1.00000000e-02` | `+9.48017340e-03` | `5.19826600e+00%` |
-| `v_yy` | `+1.00000000e-02` | `+1.68355624e-02` | `6.83556237e+01%` |
-| `p_y` | `-1.00000000e-03` | `-1.08571105e-03` | `-8.57110523e+00%` |
+| `uv_x` | `-1.00000000e+00` | `-4.03184496e+00` | `-3.03184496e+02%` |
+| `vv_y` | `-1.00000000e+00` | `-7.24924486e-01` | `-2.75075514e+01%` |
+| `v_xx` | `+1.00000000e-01` | `+2.98441750e-01` | `1.98441750e+02%` |
+| `v_yy` | `+1.00000000e-01` | `+2.88329451e-01` | `1.88329451e+02%` |
+| `p_y` | `-1.00000000e-02` | `-3.02961983e-02` | `-2.02961983e+02%` |
 
 ### V STRidge Selection and Error Metrics
 
 | Metric | Value |
 |---|---:|
-| Selected tolerance | `9.42668455e-04` |
-| Training RMSE | `4.13636858e-02` |
-| Validation RMSE | `2.26480552e-02` |
+| Selected tolerance | `1.00000000e-02` |
+| Training RMSE | `7.36747037e-01` |
+| Validation RMSE | `1.82501522e-01` |

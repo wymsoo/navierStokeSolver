@@ -18,7 +18,7 @@ dy = 1.0 / Ny
 
 epsilon = 7e-11
 G = 9.81
-rho = 1000
+rho = 100
 u_max = 1
 v_max = 1
 D = 0.005
@@ -42,6 +42,12 @@ def count_files_scandir(directory):
 
 
 def load_case_fields(output_directory, data_start):
+    if any(
+        name.startswith("data_t=") and name.endswith(".npz")
+        for name in os.listdir(output_directory)
+    ):
+        return load_npz_files(output_directory, data_start)
+
     field_directories = {
         "u": os.path.join(output_directory, "u_velocity_field"),
         "v": os.path.join(output_directory, "v_velocity_field"),
@@ -63,21 +69,41 @@ def load_case_fields(output_directory, data_start):
 
     return fields
 
+def load_npz_files(output_directory, data_start):
+    snapshot_count = len(os.listdir(output_directory))
+    U = []
+    V = []
+    P = []
+    dt_value = None
+    for index in range(data_start, snapshot_count + 1):
+        filepath = os.path.join(output_directory, f"data_t={index}.npz")
+        with np.load(filepath) as data:
+            U.append(data["u"])
+            V.append(data["v"])
+            P.append(data["p"])
+            if dt_value is None and "dt" in data:
+                dt_value = float(np.asarray(data["dt"]).item())
+
+    return {"u": np.array(U), "v": np.array(V), "p": np.array(P), "dt": dt_value}
+
 
 def load_case(output_directory, data_start, crop_t, crop_x, crop_y, fields=None):
     if fields is None:
-        fields = load_case_fields(output_directory, data_start)
+        # fields = load_case_fields(output_directory, data_start)
+        fields = load_npz_files(output_directory, data_start)
 
+    case_dt = fields.get("dt") #or dt
+    print("CASE DT", case_dt)
     U, V, P = fields["u"][:,:,:-1], fields["v"][:,:-1,:], fields["p"][:,:-1,:-1]
-    print(U.shape, V.shape, P.shape)
+    print(np.array(U).shape, np.array(V).shape, np.array(P).shape)
 
 
-    ut, uy, uyy = gradient2(U, dt, dy, axis=2)
-    _, ux, uxx = gradient2(U, dt, dx, axis=1)
-    vt, vy, vyy = gradient2(V, dt, dy, axis=2)
-    _, vx, vxx = gradient2(V, dt, dx, axis=1)
-    _, px, _ = gradient2(P, dt, dx, axis=1)
-    _, py, _ = gradient2(P, dt, dy, axis=2)
+    ut, uy, uyy = gradient(U, case_dt, dy, axis=2)
+    _, ux, uxx = gradient(U, case_dt, dx, axis=1)
+    vt, vy, vyy = gradient(V, case_dt, dy, axis=2)
+    _, vx, vxx = gradient(V, case_dt, dx, axis=1)
+    _, px, _ = gradient(P, case_dt, dx, axis=1)
+    _, py, _ = gradient(P, case_dt, dy, axis=2)
 
 
     t_slice = slice(crop_t, U.shape[0]-crop_t)
@@ -337,20 +363,20 @@ if __name__ == "__main__":
     parser.add_argument("--num_tol", type=int, default=40)
     parser.add_argument("--l0_penalty", type=float, default=1e-6)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--data_start", type=int, default=150)
+    parser.add_argument("--data_start", type=int, default=1)
     parser.add_argument(
         "--input_directories",
         nargs="+",
         default=[
-            # os.path.join(os.path.dirname(__file__), "output/output_2movingwalls"),
-            os.path.join(os.path.dirname(__file__), "output/4movingwalls_80"),
-            os.path.join(os.path.dirname(__file__), "output/lidcavity_81"),
+            # os.path.join(os.path.dirname(__file__), "output_npz/2movingwalls_81"),
+            os.path.join(os.path.dirname(__file__), "output_npz/4movingwalls_81"),
+            os.path.join(os.path.dirname(__file__), "output_npz/lidcavity_81"),
             # os.path.join(os.path.dirname(__file__), "output/poiseuille"),
         ],
     )
-    parser.add_argument("--crop_t", type=int, default=1000, help="discard this many time layers near each temporal boundary")
-    parser.add_argument("--crop_y", type=int, default=2, help="discard this many spatial points near each wall")
-    parser.add_argument("--crop_x", type=int, default=2, help="discard this many spatial points near each wall")
+    parser.add_argument("--crop_t", type=int, default=100, help="discard this many time layers near each temporal boundary")
+    parser.add_argument("--crop_y", type=int, default=1, help="discard this many spatial points near each wall")
+    parser.add_argument("--crop_x", type=int, default=1, help="discard this many spatial points near each wall")
     parser.add_argument(
         "--report",
         type=str,

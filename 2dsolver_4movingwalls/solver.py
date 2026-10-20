@@ -9,21 +9,54 @@ from pressurefieldplot import PressureField
 from plot_loss import plot_loss
 import os
 
+def compute_timestep(u, v, dx, dy, rho, mu, dt_prev, u_wall, cfl=0.3):
+    """
+    Computes adaptive timestep for Navier-Stokes solver.
+    """
+    # 1. Compute local velocity magnitudes
+    u_mag = np.sqrt(u[:,:-1]**2 + v[:-1,:]**2)
+    u_max = np.max(u_mag)
+    
+    # Fallback to boundary wall velocity at step 0 if interior flow is at rest
+    if u_max < 1e-6:
+        u_max = u_wall
+
+    # 2. Compute minimum grid spacing
+    ds_min = min(dx, dy)
+
+    # 3. Compute Advective CFL Limit
+    dt_cfl = cfl * (ds_min / u_max)
+
+    # 4. Compute Viscous / Diffusion Limit
+    dt_visc = 0.25 * (rho * (ds_min**2) / mu)
+
+    # 5. Take strict minimum between CFL and Viscous criteria
+    dt_target = min(dt_cfl, dt_visc)
+
+    # 6. Apply 10% maximum growth cap from previous timestep (if available)
+    if dt_prev is not None:
+        dt_new = min(dt_target, 1.1 * dt_prev)
+    else:
+        dt_new = dt_target
+
+    return dt_new
+
 
 def main():
     iteration = []
     loss = []
-    trial = "4movingwalls"
     Nx = 81
     Ny = 81
+    trial = f"4movingwalls_{Nx}"
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    output_dir = os.path.join(os.path.dir(base_dir), f"stridge_model/output/{trial}")
-    u_dir = os.path.join(output_dir, f"u_velocity_field")
-    v_dir = os.path.join(output_dir, f"v_velocity_field")
-    p_dir = os.path.join(output_dir, f"pressure_field")
-    os.makedirs(u_dir, exist_ok=True)
-    os.makedirs(v_dir, exist_ok=True)
-    os.makedirs(p_dir, exist_ok=True)
+    output_dir = os.path.join(os.path.dirname(base_dir), f"stridge_model/output_npz/{trial}")
+    # u_dir = os.path.join(output_dir, f"u_velocity_field")
+    # v_dir = os.path.join(output_dir, f"v_velocity_field")
+    # p_dir = os.path.join(output_dir, f"pressure_field")
+    # os.makedirs(u_dir, exist_ok=True)
+    # os.makedirs(v_dir, exist_ok=True)
+    # os.makedirs(p_dir, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
 
     # Parameters
     dt = 0.0001
@@ -33,13 +66,14 @@ def main():
     dx = 1.0 / Nx
     dy = 1.0 / Ny
     G = 9.81
-    rho = 1000
+    rho = 100
     u_max = 1
     # D = 0.005
     D = 1.0
     viscosity = 10
     Re = (rho * u_max * D) / viscosity
-    print("Reynolds number=", Re)
+
+
 
     # Velocity fields (staggered)
     U = np.zeros((Nx - 1, Ny))      # u-velocity at x-faces
@@ -50,9 +84,10 @@ def main():
     H = 5  # Subsampling for visualization
     
     # Time iteration loop
-    time = dt
+    time = 0
     
     for i in range(1, timesteps + 1):
+        dt = compute_timestep(U, V, dx, dy, rho, viscosity, dt_prev=dt, u_wall=1.0, cfl=0.3) # cfl 40% safety buffer below the theoretical 2D limit ($0.5$) 
         # Set Boundary Conditions
         Ubc, Vbc = set_Dirichlet_BC(U, V)
         
@@ -91,20 +126,30 @@ def main():
     
         # velocityField(U, V, P, Nx, Ny, time, H)
         # PressureField(P, Nx, Ny, time)
+
         if (i % 1 == 0):
-            # velocityField(U,V,P, Nx, Ny, time, H)
-            np.savetxt(os.path.join(u_dir, f"u_velocity_t={i}.txt"), U, delimiter="\t")
-            np.savetxt(os.path.join(v_dir, f"v_velocity_t={i}.txt"), V, delimiter="\t")
-            np.savetxt(os.path.join(p_dir, f"pressure_field_t={i}.txt"), P, delimiter="\t")
+            np.savez_compressed(
+                os.path.join(output_dir,f"data_t={i}.npz"),
+                u=U,
+                v=V,
+                p=P,
+                dt=dt,
+                dx=dx,
+                dy=dy
+            )
 
         # print(f"Iteration: {i}")
         time += dt
     # Final time adjustment
-    plot_loss(iteration,loss)
+    # plot_loss(iteration,loss)
     velocityField(U,V,P, Nx, Ny, time)
-    print("U_max = ", np.max(U))
-    print("V_max = ", np.max(V))
     print("Simulation completed.")
+    u_max = np.max(U)
+    v_max = np.max(V)
+    max_v = max(u_max, v_max)
+    print("max v:",max_v)
+    Re = (rho * max_v * D) / viscosity
+    print("Reynolds number=", Re)
 
 
 

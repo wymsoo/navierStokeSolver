@@ -13,15 +13,15 @@ from global_var import Nx, Ny, Re, D, G ,dx, dy, dt, max_ts, H, L, rho, viscosit
 import os
 
 def main():
-    trial = "poiseuille"
+    trial = "poiseuille_81"
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    output_dir = os.path.join(os.path.dirname(base_dir), f"stridge_model/output/{trial}")
-    u_dir = os.path.join(output_dir, "u_velocity_field")
-    v_dir = os.path.join(output_dir, "v_velocity_field")
-    p_dir = os.path.join(output_dir, "pressure_field")
-    os.makedirs(u_dir, exist_ok=True)
-    os.makedirs(v_dir, exist_ok=True)
-    os.makedirs(p_dir, exist_ok=True)
+    output_dir = os.path.join(os.path.dirname(base_dir), f"stridge_model/output_npz/{trial}")
+    # u_dir = os.path.join(output_dir, "u_velocity_field")
+    # v_dir = os.path.join(output_dir, "v_velocity_field")
+    # p_dir = os.path.join(output_dir, "pressure_field")
+    # os.makedirs(u_dir, exist_ok=True)
+    # os.makedirs(v_dir, exist_ok=True)
+    # os.makedirs(p_dir, exist_ok=True)
 
     P = np.zeros((Nx, Ny))
     y = np.linspace(-D/2,D/2,Ny)
@@ -76,15 +76,24 @@ def main():
         if ((U_loss+V_loss)<epsilon):
             break
             
-        print(f"Iteration: {i}")
+        print(f"Iteration: {i} || Loss: {total_loss}")
         time += dt
         iteration.append(i)
         loss.append(total_loss)
     
         if (i % 1 == 0):
-            np.savetxt(os.path.join(u_dir, f"u_velocity_t={i}.txt"), U, delimiter="\t")
-            np.savetxt(os.path.join(v_dir, f"v_velocity_t={i}.txt"), V, delimiter="\t")
-            np.savetxt(os.path.join(p_dir, f"pressure_field_t={i}.txt"), P, delimiter="\t")
+            # np.savetxt(os.path.join(u_dir, f"u_velocity_t={i}.txt"), U, delimiter="\t")
+            # np.savetxt(os.path.join(v_dir, f"v_velocity_t={i}.txt"), V, delimiter="\t")
+            # np.savetxt(os.path.join(p_dir, f"pressure_field_t={i}.txt"), P, delimiter="\t")
+            np.savez_compressed(
+                os.path.join(output_dir,f"data_t={i}.npz"),
+                u=U,
+                v=V,
+                p=P,
+                dt=dt,
+                dx=dx,
+                dy=dy
+            )
         
 
     # Final time adjustment
