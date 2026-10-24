@@ -33,8 +33,8 @@ def velocityField(U, V, P, Nx, Ny, time):
     ax_xy.set_xlabel('X')
     ax_xy.set_ylabel('Y')
     ax_xy.set_title(f'XY Plane (t = {time:.3f})')
-    ax_xy.set_xlim(0, Nx)
-    ax_xy.set_ylim(0, Ny)
+    ax_xy.set_xlim(-1, Nx)
+    ax_xy.set_ylim(-1, Ny)
     cbar_xy = fig.colorbar(quiver_xy, ax=ax_xy)
     cbar_xy.set_label('Velocity Magnitude')
 

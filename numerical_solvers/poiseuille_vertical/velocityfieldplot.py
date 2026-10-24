@@ -2,9 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 from stagger import stagger_back
+from global_var import D, L
 
 PLOTS_DIR = Path(__file__).resolve().parent / 'plots'
-
 
 def velocityField(U, V, P, Nx, Ny, time):
 
@@ -38,7 +38,7 @@ def velocityField(U, V, P, Nx, Ny, time):
     cbar_xy = fig.colorbar(quiver_xy, ax=ax_xy)
     cbar_xy.set_label('Velocity Magnitude')
 
-    plt.suptitle(f'Velocity and Pressure Field at Time = {time:.2f} sec', fontsize=14)
+    plt.suptitle(f'Velocity and Pressure Field at Time = {time*1000:.2f}', fontsize=14)
     plt.tight_layout()
     PLOTS_DIR.mkdir(exist_ok=True)
     fig.savefig(PLOTS_DIR / f'velocity_time_{int(time*1000)}.png')

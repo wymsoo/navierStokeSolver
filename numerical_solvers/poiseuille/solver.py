@@ -9,19 +9,30 @@ from pressurefieldplot import PressureField
 from stagger import stagger_back
 from plot_loss import plot_loss
 from compare_with_theory_plot import compare_with_theory
-from global_var import Nx, Ny, Re, D, G ,dx, dy, dt, max_ts, H, L, rho, viscosity, epsilon
+# from global_var import Nx, Ny, Re, D, G ,dx, dy, dt, max_ts, H, L, rho, viscosity, epsilon
 import os
 
 def main():
-    trial = "poiseuille_81"
-    base_dir = os.path.dirname(os.path.abspath(__file__))
+    Nx = 31
+    Ny = 31
+    trial = f"poiseuille_vertical_{31}"
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     output_dir = os.path.join(os.path.dirname(base_dir), f"stridge_model/output_npz/{trial}")
-    # u_dir = os.path.join(output_dir, "u_velocity_field")
-    # v_dir = os.path.join(output_dir, "v_velocity_field")
-    # p_dir = os.path.join(output_dir, "pressure_field")
-    # os.makedirs(u_dir, exist_ok=True)
-    # os.makedirs(v_dir, exist_ok=True)
-    # os.makedirs(p_dir, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Parameters
+    max_ts = 10000
+    dt = 0.001
+    epsilon = 5e-10
+    # Grid size
+
+    dx = 1.0 / Nx
+    dy = 1.0 / Ny
+    G = 9.81
+    rho = 100
+    # D = 0.005
+    D = 1.0
+    viscosity = 10
 
     P = np.zeros((Nx, Ny))
     y = np.linspace(-D/2,D/2,Ny)
@@ -33,10 +44,6 @@ def main():
     V = np.zeros((Nx, Ny - 1))      # v-velocity at y-faces
     iteration = []
     loss = []
-    stag_Ux = []
-    stag_Uy = []
-    stag_Vx = []
-    stag_Vy = []
     
     # Time iteration loop
     time = dt
@@ -58,14 +65,10 @@ def main():
         # Compute pressure gradients
         Px = np.diff(P, axis=0) / dx
         Py = np.diff(P, axis=1) / dy 
-        # print("Pressure Gradient", Px)
-        # print("Pressure Gradient Y", Py)
         
         # Apply pressure correction
         U_new = Ustar - dt * Px/rho
         V_new = Vstar - dt * Py/rho
-        # U_new = Ustar
-        # V_new = Vstar
     
         U_loss = np.sum((U_new-U)**2/(Nx*Ny)) #MSE
         V_loss = np.sum((V_new-V)**2/(Nx*Ny))
@@ -82,9 +85,6 @@ def main():
         loss.append(total_loss)
     
         if (i % 1 == 0):
-            # np.savetxt(os.path.join(u_dir, f"u_velocity_t={i}.txt"), U, delimiter="\t")
-            # np.savetxt(os.path.join(v_dir, f"v_velocity_t={i}.txt"), V, delimiter="\t")
-            # np.savetxt(os.path.join(p_dir, f"pressure_field_t={i}.txt"), P, delimiter="\t")
             np.savez_compressed(
                 os.path.join(output_dir,f"data_t={i}.npz"),
                 u=U,
@@ -98,11 +98,14 @@ def main():
 
     # Final time adjustment
     time -= dt
-    velocityField(U,V,P, Nx, Ny, time, H)
+    velocityField(U,V,P, Nx, Ny, time)
     compare_with_theory(U,V)
     plot_loss(iteration,loss)
     print(f"Simulation completed. File written to {output_dir}")
-    print("REYNOLD", Re)
+    mag_v = np.sqrt(np.max(abs(U))**2+np.max(abs(V))**2)
+    print("mag v:",mag_v)
+    Re = (rho * mag_v * D) / viscosity
+    print("Reynolds number=", Re)
 
 
 

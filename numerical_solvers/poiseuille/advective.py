@@ -1,6 +1,6 @@
 import numpy as np 
-from global_var import rho
-from average import average
+from poiseuille.global_var import rho
+from poiseuille.average import average
 
 
 def advective (U: np.ndarray, V: np.ndarray, dx: float, dy: float ): 

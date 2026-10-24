@@ -6,7 +6,7 @@ from global_var import D, L
 
 PLOTS_DIR = Path(__file__).resolve().parent / 'plots'
 
-def velocityField(U, V, P, Nx, Ny, time, H):
+def velocityField(U, V, P, Nx, Ny, time):
 
     fig = plt.figure(figsize=(18, 12))
     Uplot, Vplot = stagger_back(U, V)

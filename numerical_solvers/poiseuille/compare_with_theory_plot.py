@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
-from stagger import stagger_back
-from global_var import D, Nx, Ny, viscosity, rho, G
+from poiseuille.stagger import stagger_back
+from poiseuille.global_var import D, Nx, Ny, viscosity, rho, G
 
 PLOTS_DIR = Path(__file__).resolve().parent / 'plots'
 

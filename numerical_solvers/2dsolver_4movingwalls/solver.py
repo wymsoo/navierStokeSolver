@@ -45,10 +45,10 @@ def compute_timestep(u, v, dx, dy, rho, mu, dt_prev, u_wall, cfl=0.3):
 def main():
     iteration = []
     loss = []
-    Nx = 81
-    Ny = 81
+    Nx = 51
+    Ny = 51
     trial = f"4movingwalls_{Nx}"
-    base_dir = os.path.dirname(os.path.abspath(__file__))
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     output_dir = os.path.join(os.path.dirname(base_dir), f"stridge_model/output_npz/{trial}")
     # u_dir = os.path.join(output_dir, f"u_velocity_field")
     # v_dir = os.path.join(output_dir, f"v_velocity_field")
@@ -59,14 +59,14 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
 
     # Parameters
-    dt = 0.0001
+    dt = 0.0000001
     epsilon = 5e-10
     # Grid size
 
     dx = 1.0 / Nx
     dy = 1.0 / Ny
     G = 9.81
-    rho = 1000
+    rho = 100
     u_max = 1
     # D = 0.005
     D = 1.0
@@ -87,7 +87,7 @@ def main():
     time = 0
     
     for i in range(1, timesteps + 1):
-        dt = compute_timestep(U, V, dx, dy, rho, viscosity, dt_prev=dt, u_wall=1.0, cfl=0.3) # cfl 40% safety buffer below the theoretical 2D limit ($0.5$) 
+        # dt = compute_timestep(U, V, dx, dy, rho, viscosity, dt_prev=dt, u_wall=1.0, cfl=0.3) # cfl 40% safety buffer below the theoretical 2D limit ($0.5$) 
         # Set Boundary Conditions
         Ubc, Vbc = set_Dirichlet_BC(U, V)
         

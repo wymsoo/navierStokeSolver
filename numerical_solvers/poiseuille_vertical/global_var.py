@@ -67,12 +67,12 @@ H = 0.005
 epsilon = 1e-15
 
 rho,viscosity,L,D,Nx,Ny,dx,dy,u_max,Re ,dt = setup_solver_parameters(
-    rho=1000.0,
+    rho=100.0,
     viscosity=0.081,
     L=0.05,
     D=0.005,  # Shrunk by factor of 10
-    Nx=81,
-    Ny=81,
+    Nx=31,
+    Ny=31,
     G=9.81,
     safety_factor=0.9
 )

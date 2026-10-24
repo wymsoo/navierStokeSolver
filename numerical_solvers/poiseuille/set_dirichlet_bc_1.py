@@ -13,7 +13,7 @@ def set_Dirichlet_BC(U, V):
     U = np.concatenate((U, Ueast), axis=0)
 
     lenU = U.shape
-    Unorth = - U[:,-1].reshape((lenU[0],1))  # for poiseuille flow, there is no slip in the top and bottom boundary
+    Unorth = - U[:,-1].reshape((lenU[0],1))  # for flow, there is no slip in the top and bottom boundary
     Usouth = - U[:,0].reshape((lenU[0],1))
     U = np.concatenate((Usouth, U), axis=1)
     U = np.concatenate((U, Unorth), axis=1)

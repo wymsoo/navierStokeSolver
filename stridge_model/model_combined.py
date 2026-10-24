@@ -9,7 +9,7 @@ import argparse
 ########################################################################
 Nx = 81
 Ny = 81
-dt = 0.0001
+# dt = 0.0001
 # dt = 1e-05 # for 1d flow
 dx = 1.0 / Nx
 dy = 1.0 / Ny
@@ -19,12 +19,9 @@ dy = 1.0 / Ny
 epsilon = 7e-11
 G = 9.81
 rho = 100
-u_max = 1
-v_max = 1
-D = 0.005
-# D = 1.0
+# D = 0.005
+D = 1.0
 viscosity = 10
-Re = (rho * u_max * D) / viscosity
 nu = viscosity/rho
 c_advective = 1
 c_pressure = 1/rho
@@ -369,9 +366,10 @@ if __name__ == "__main__":
         nargs="+",
         default=[
             # os.path.join(os.path.dirname(__file__), "output_npz/2movingwalls_81"),
-            os.path.join(os.path.dirname(__file__), "output_npz/4movingwalls_81"),
-            os.path.join(os.path.dirname(__file__), "output_npz/lidcavity_81"),
-            # os.path.join(os.path.dirname(__file__), "output/poiseuille"),
+            os.path.join(os.path.dirname(__file__), "output_npz/4movingwalls_31"),
+            os.path.join(os.path.dirname(__file__), "output_npz/lidcavity_31"),
+            os.path.join(os.path.dirname(__file__), "output_npz/poiseuille_vertical_31"),
+            os.path.join(os.path.dirname(__file__), "output_npz/poiseuille_31")
         ],
     )
     parser.add_argument("--crop_t", type=int, default=100, help="discard this many time layers near each temporal boundary")

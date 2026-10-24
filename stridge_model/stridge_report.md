@@ -30,9 +30,9 @@
 
 | Quantity | Value |
 |---|---:|
-| Loaded field shape $(t, x, y)$ | `[(1759, 80, 80), (1647, 80, 80)]` |
-| Regression field shape $(t, x, y)$ | `[(1559, 78, 78), (1447, 78, 78)]` |
-| Regression samples | `83,501,265,423,888` |
+| Loaded field shape $(t, x, y)$ | `[(381, 30, 30), (404, 30, 30), (10000, 30, 30)]` |
+| Regression field shape $(t, x, y)$ | `[(181, 28, 28), (204, 28, 28), (9800, 28, 28)]` |
+| Regression samples | `174,374,512,331,980,800` |
 | Dictionary terms | `5` |
 | First saved time index | `1` |
 | Temporal crop at each boundary | `100` layers |
@@ -47,29 +47,29 @@
 
 ### Learned equation
 
-`u_t =- 1.39065963e+00*uu_x - 3.33509247e+00*vu_y + 2.73183402e-01*u_xx + 2.87097553e-01*u_yy - 2.87070088e-02*p_x`
+`u_t =- 3.74631824e+01*uu_x - 5.57292686e+01*vu_y + 1.77326125e+00*u_xx + 2.14085336e+00*u_yy - 6.44914508e-01*p_x`
 
 | Term | Reference coefficient | Learned coefficient | Percentage error |
 |---|---:|---:|---:|
-| `uu_x` | `-1.00000000e+00` | `-1.39065963e+00` | `-3.90659630e+01%` |
-| `vu_y` | `-1.00000000e+00` | `-3.33509247e+00` | `-2.33509247e+02%` |
-| `u_xx` | `+1.00000000e-01` | `+2.73183402e-01` | `1.73183402e+02%` |
-| `u_yy` | `+1.00000000e-01` | `+2.87097553e-01` | `1.87097553e+02%` |
-| `p_x` | `-1.00000000e-02` | `-2.87070088e-02` | `-1.87070088e+02%` |
+| `uu_x` | `-1.00000000e+00` | `-3.74631824e+01` | `-3.64631824e+03%` |
+| `vu_y` | `-1.00000000e+00` | `-5.57292686e+01` | `-5.47292686e+03%` |
+| `u_xx` | `+1.00000000e-01` | `+1.77326125e+00` | `1.67326125e+03%` |
+| `u_yy` | `+1.00000000e-01` | `+2.14085336e+00` | `2.04085336e+03%` |
+| `p_x` | `-1.00000000e-02` | `-6.44914508e-01` | `-6.34914508e+03%` |
 
 ## 5. STRidge Selection and Error Metrics
 
 | Metric | Value |
 |---|---:|
 | Regularisation parameter, $\lambda$ | `1.00000000e-08` |
-| Selected tolerance | `1.00000000e-02` |
+| Selected tolerance | `1.00000000e-06` |
 | L0 penalty | `1.00000000e-06` |
-| Training RMSE | `8.75377065e-01` |
-| Validation RMSE | `6.34671243e-01` |
+| Training RMSE | `7.49377819e+00` |
+| Validation RMSE | `0.00000000e+00` |
 
 ## 6. Reproducibility Notes
 
-- Input directory: `/Users/minnie/Desktop/PhysicsFYP/ns_solver/stridge_model/output_npz/4movingwalls_81, /Users/minnie/Desktop/PhysicsFYP/ns_solver/stridge_model/output_npz/lidcavity_81`
+- Input directory: `/Users/minnie/Desktop/PhysicsFYP/ns_solver/stridge_model/output_npz/4movingwalls_31, /Users/minnie/Desktop/PhysicsFYP/ns_solver/stridge_model/output_npz/lidcavity_31, /Users/minnie/Desktop/PhysicsFYP/ns_solver/stridge_model/output_npz/poiseuille_vertical_31`
 - Fields were loaded starting at saved time index `1`.
 - Derivatives were calculated using second-order edge-aware finite differences via `numpy.gradient`.
 - The learned equation is compared term-by-term with the supplied reference coefficients.
@@ -82,20 +82,20 @@
 
 ### Learned equation
 
-`v_t =- 4.03184496e+00*uv_x - 7.24924486e-01*vv_y + 2.98441750e-01*v_xx + 2.88329451e-01*v_yy - 3.02961983e-02*p_y`
+`v_t =- 3.08640973e+01*uv_x + 5.26329314e+01*vv_y - 4.46319146e-03*v_xx - 5.14729092e-01*v_yy + 1.84585000e-02*p_y`
 
 | Term | Reference coefficient | Learned coefficient | Percentage error |
 |---|---:|---:|---:|
-| `uv_x` | `-1.00000000e+00` | `-4.03184496e+00` | `-3.03184496e+02%` |
-| `vv_y` | `-1.00000000e+00` | `-7.24924486e-01` | `-2.75075514e+01%` |
-| `v_xx` | `+1.00000000e-01` | `+2.98441750e-01` | `1.98441750e+02%` |
-| `v_yy` | `+1.00000000e-01` | `+2.88329451e-01` | `1.88329451e+02%` |
-| `p_y` | `-1.00000000e-02` | `-3.02961983e-02` | `-2.02961983e+02%` |
+| `uv_x` | `-1.00000000e+00` | `-3.08640973e+01` | `-2.98640973e+03%` |
+| `vv_y` | `-1.00000000e+00` | `+5.26329314e+01` | `-5.36329314e+03%` |
+| `v_xx` | `+1.00000000e-01` | `-4.46319146e-03` | `1.04463191e+02%` |
+| `v_yy` | `+1.00000000e-01` | `-5.14729092e-01` | `6.14729092e+02%` |
+| `p_y` | `-1.00000000e-02` | `+1.84585000e-02` | `-2.84585000e+02%` |
 
 ### V STRidge Selection and Error Metrics
 
 | Metric | Value |
 |---|---:|
-| Selected tolerance | `1.00000000e-02` |
-| Training RMSE | `7.36747037e-01` |
-| Validation RMSE | `1.82501522e-01` |
+| Selected tolerance | `3.88815518e-03` |
+| Training RMSE | `1.46637989e+01` |
+| Validation RMSE | `2.93472466e+00` |

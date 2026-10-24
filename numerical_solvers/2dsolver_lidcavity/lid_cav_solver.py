@@ -20,19 +20,14 @@ def compute_timestep(u, v, dx, dy, rho, mu, dt_prev, u_wall, cfl=0.3):
     # Fallback to boundary wall velocity at step 0 if interior flow is at rest
     if u_max < 1e-6:
         u_max = u_wall
-
-    # 2. Compute minimum grid spacing
+    # Compute minimum grid spacing
     ds_min = min(dx, dy)
-
-    # 3. Compute Advective CFL Limit
+    # Compute Advective CFL Limit
     dt_cfl = cfl * (ds_min / u_max)
-
     # 4. Compute Viscous / Diffusion Limit
     dt_visc = 0.25 * (rho * (ds_min**2) / mu)
-
     # 5. Take strict minimum between CFL and Viscous criteria
     dt_target = min(dt_cfl, dt_visc)
-
     # 6. Apply 10% maximum growth cap from previous timestep (if available)
     if dt_prev is not None:
         dt_new = min(dt_target, 1.1 * dt_prev)
@@ -46,20 +41,14 @@ def compute_timestep(u, v, dx, dy, rho, mu, dt_prev, u_wall, cfl=0.3):
 def main():
     iteration = []
     loss = []
-    Nx = 81
-    Ny = 81
+    Nx = 51
+    Ny = 51
     trial = f'lidcavity_{Nx}'
     base_dir = os.path.dirname(os.path.abspath(__file__))
     output_dir = os.path.join(os.path.dirname(base_dir), f"stridge_model/output_npz/{trial}")
-    # u_dir = os.path.join(output_dir, f"u_velocity_field_{Nx}")
-    # v_dir = os.path.join(output_dir, f"v_velocity_field_{Nx}")
-    # p_dir = os.path.join(output_dir, f"pressure_field_{Nx}")
-    # os.makedirs(u_dir, exist_ok=True)
-    # os.makedirs(v_dir, exist_ok=True)
-    # os.makedirs(p_dir, exist_ok=True)
     os.makedirs(output_dir,exist_ok=True)
     # Parameters
-    dt = 0.0001
+    dt = 0.00001
     epsilon = 7e-11
     # Grid size
     dx = 1.0 / Nx
@@ -119,12 +108,11 @@ def main():
 
         iteration.append(i)
         loss.append(total_loss)
-
-        time += dt
     
         # velocityField(U, V, P, Nx, Ny, time, H)
         # PressureField(P, Nx, Ny, time)
         if (i % 1 == 0):
+
             # velocityField(U,V,P, Nx, Ny, time, H)
             # np.savetxt(os.path.join(u_dir, f"u_velocity_t={i}.txt"), U, delimiter="\t")
             # np.savetxt(os.path.join(v_dir, f"v_velocity_t={i}.txt"), V, delimiter="\t")

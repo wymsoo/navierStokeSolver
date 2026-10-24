@@ -1,5 +1,5 @@
 import numpy as np 
-from global_var import rho
+from poiseuille.global_var import rho
 
 def viscous(U: np.ndarray, V: np.ndarray,
             Re: float, dx: float, dy: float, viscosity: float):
