@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from models.operators.advective import advective
 from models.operators.viscous import viscous
 from models.operators.solve_poisson import Solve_Poisson
-from models.operators.velocityfieldplot import velocityField
+from models.operators.velocityfieldplot import velocityField, velocityDirectionField
 from models.operators.pressurefieldplot import PressureField
 from models.operators.plot_loss import plot_loss
 import sys
@@ -34,6 +34,13 @@ class NavierStokesSolver2d:
         self.loss = []
         self.fluid_data_output_dir = config.output_dir
         self.base_dir = config.base_dir
+        self.stopping_bc_conditions = config.stopping_bc_conditions
+        self.stopping_bc_time = config.stopping_bc_time
+        self.relaxation_time = config.relaxation_time
+        self.active_boundary_condition = self.set_boundary_condition 
+        self.active_Fx_ext = self.Fx_ext
+        self.active_Fy_ext = self.Fy_ext
+        self.flow_stopped = False
 
     def compute_reynold(self,u_max,L_flowdir):
         if L_flowdir==0:
@@ -54,6 +61,7 @@ class NavierStokesSolver2d:
 
     def plot_fields(self,time,path_dir):
         velocityField(self.U,self.V,self.P,self.Nx,self.Ny,time,path_dir)
+        velocityDirectionField(self.U,self.V,self.P,self.Nx,self.Ny,time,path_dir)
         PressureField(self.P,self.Nx,self.Ny,time)
         return
 
@@ -93,25 +101,67 @@ class NavierStokesSolver2d:
 
         return dt_new
 
+    def stopping_bc(self, U, V):
+        # Apply stationary no-slip walls while preserving the unpadded state.
+        lenU = U.shape
+        Unorth = -U[:, -1].reshape((lenU[0], 1))
+        Usouth = -U[:, 0].reshape((lenU[0], 1))
+        U_padded = np.concatenate((Usouth, U, Unorth), axis=1)
+        lenU = U_padded.shape
+        Uwest = np.zeros((1, lenU[1]))
+        Ueast = np.zeros((1, lenU[1]))
+        U_padded = np.concatenate((Uwest, U_padded, Ueast), axis=0)
 
+        lenV = V.shape
+        Vsouth = np.zeros((lenV[0], 1))
+        Vnorth = np.zeros((lenV[0], 1))
+        V_padded = np.concatenate((Vsouth, V, Vnorth), axis=1)
+        lenV = V_padded.shape
+        Vwest = -V_padded[0, :].reshape((1, lenV[1]))
+        Veast = -V_padded[-1, :].reshape((1, lenV[1]))
+        V_padded = np.concatenate((Vwest, V_padded, Veast), axis=0)
+
+        return U_padded, V_padded
+
+    def update_boundary_condition(self, time):
+        if (
+            not self.flow_stopped
+            and
+            self.stopping_bc_conditions
+            and self.stopping_bc_time is not None
+            and time >= self.stopping_bc_time
+        ):
+            self.active_boundary_condition = self.stopping_bc
+            self.active_Fx_ext = 0.0
+            self.active_Fy_ext = 0.0
+            self.flow_stopped = True
 
     def run(self):
         dt = self.dt
         time = 0
         for i in range(1, self.max_ts + 1):
+            self.update_boundary_condition(time)
+
             dt = self.compute_timestep(dt_prev=dt, u_wall=1.0, cfl=0.3) # cfl 40% safety buffer below the theoretical 2D limit (0.5) 
+            if (
+                not self.flow_stopped
+                and self.stopping_bc_conditions
+                and self.stopping_bc_time is not None
+                and time < self.stopping_bc_time < time + dt
+            ):
+                dt = self.stopping_bc_time - time
             # Set Boundary Conditions
             U_copy = self.U.copy()
             V_copy = self.V.copy()
-            Ubc, Vbc = self.set_boundary_condition(U_copy,V_copy)
+            Ubc, Vbc = self.active_boundary_condition(U_copy, V_copy)
             
             # Non-linear terms
             advectU, advectV = self.advective(Ubc, Vbc)
             viscousU, viscousV = self.viscous(Ubc, Vbc)
             
             # Compute intermediate velocities
-            Ustar = U_copy - advectU * dt + viscousU * dt + self.Fx_ext*dt
-            Vstar = V_copy - advectV * dt + viscousV * dt + self.Fy_ext*dt
+            Ustar = U_copy - advectU * dt + viscousU * dt + self.active_Fx_ext * dt
+            Vstar = V_copy - advectV * dt + viscousV * dt + self.active_Fy_ext * dt
             
             # Solve Poisson's equation for pressure
             self.P = self.solve_poisson(Ustar, Vstar, dt)
@@ -131,9 +181,6 @@ class NavierStokesSolver2d:
             self.U = U_new
             self.V = V_new
 
-            if ((U_loss+V_loss)<self.epsilon):
-                break
-
             self.iter.append(i)
             self.loss.append(total_loss)
 
@@ -148,6 +195,22 @@ class NavierStokesSolver2d:
                 dx=self.dx,
                 dy=self.dy
             )
+
+            can_check_convergence = (
+                not self.stopping_bc_conditions
+                or (
+                    self.flow_stopped
+                    and self.stopping_bc_time is not None
+                    and time >= self.stopping_bc_time + self.relaxation_time
+                )
+            )
+            if can_check_convergence and total_loss < self.epsilon:
+                break
+
+        # uncomment this line if you want to plot the dynamic field changes
+            # if i % 50 == 0:
+            #     self.plot_fields(time, self.base_dir)
+
         self.plot_fields(time, self.base_dir)
         print("Simulation completed.")
         u_max = np.max(self.U)
@@ -337,6 +400,7 @@ class Poiseuille(NavierStokesSolver2d):
         
 
         return U,V
+
 
 
 

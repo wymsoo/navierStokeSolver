@@ -7,7 +7,7 @@ from models.operators.divergence import div
 def Solve_Poisson(self, Ustar: np.ndarray, Vstar: np.ndarray, dx: float, dy: float, Nx: int, Ny: int, dt: float) -> np.ndarray:
 
     # Apply Dirichlet boundary conditions
-    Ustarbc, Vstarbc = self.set_boundary_condition(Ustar, Vstar)
+    Ustarbc, Vstarbc = self.active_boundary_condition(Ustar, Vstar)
     
     # Compute divergence 
     RHS = (1/dt) * div(Ustarbc, Vstarbc, dx, dy)

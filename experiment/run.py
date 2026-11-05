@@ -21,6 +21,15 @@ rho = 10
 u_max = 1
 viscosity = 10
 
+# define stopping conditions if desired
+stopping_bc_conditions = True
+stopping_bc_time = 0.1  # Physical time at which the boundary condition changes
+relaxation_time = 10.0  # Physical time to simulate after the transition
+
+# stopping_bc_conditions = False
+# stopping_bc_time = 0.0  # Physical time at which the boundary condition changes
+# relaxation_time = 0.0  # Physical time to simulate after the transition
+
 
 # 4. System Setup
 trial = f"{flow}_{Nx}"
@@ -32,7 +41,12 @@ dt = 0.00001 if (flow=="poiseuille" or flow == "twomovingwalls") else 0.0000001
 
 
 # 5. Initialize solver with parameters
-config.init(Nx, Ny, trial, base_dir, output_dir, dt, rho, u_max, viscosity, fx_ext, fy_ext)
+config.init(
+    Nx, Ny, trial, base_dir, output_dir, dt, rho, u_max, viscosity, fx_ext, fy_ext,
+    stopping_bc_conditions_var=stopping_bc_conditions,
+    stopping_bc_time_var=stopping_bc_time,
+    relaxation_time_var=relaxation_time,
+)
 match flow:
     case "poiseuille":
         solver = Poiseuille()
