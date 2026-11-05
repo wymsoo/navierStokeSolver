@@ -6,6 +6,7 @@ from models.operators.solve_poisson import Solve_Poisson
 from models.operators.velocityfieldplot import velocityField
 from models.operators.pressurefieldplot import PressureField
 from models.operators.plot_loss import plot_loss
+import sys
 import os
 from pathlib import Path
 import config
@@ -156,6 +157,7 @@ class NavierStokesSolver2d:
         L_flowdirection = 0 if (u_max>v_max) else 1
         Re = self.compute_reynold(u_max,L_flowdirection)
         print("Reynolds number=", Re)
+        print("Output saved to ", self.fluid_data_output_dir)
 
         
 class LidCavitySolver(NavierStokesSolver2d):
@@ -270,31 +272,68 @@ class TwoMovingWalls(NavierStokesSolver2d):
 class Poiseuille(NavierStokesSolver2d):
     def __init__(self):
         super().__init__()
-    def set_boundary_condition(self,U,V,u_wall=1.0):
-        lenU = U.shape
-        Uwest = U[-1,:].reshape((1,lenU[1]))
-        Ueast = U[0,:].reshape((1,lenU[1]))                            #periodic boundary conditions 
-        U = np.concatenate((Uwest, U), axis=0)
-        U = np.concatenate((U, Ueast), axis=0)
+    def set_boundary_condition(self,U,V):
+        if (self.Fx_ext>0 and self.Fy_ext==0):
+            lenU = U.shape
+            Uwest = U[-1,:].reshape((1,lenU[1]))
+            Ueast = U[0,:].reshape((1,lenU[1]))                            #periodic boundary conditions 
+            U = np.concatenate((Uwest, U), axis=0)
+            U = np.concatenate((U, Ueast), axis=0)
 
-        lenU = U.shape
-        Unorth = - U[:,-1].reshape((lenU[0],1))  # for flow, there is no slip in the top and bottom boundary
-        Usouth = - U[:,0].reshape((lenU[0],1))
-        U = np.concatenate((Usouth, U), axis=1)
-        U = np.concatenate((U, Unorth), axis=1)
+            lenU = U.shape
+            Unorth = - U[:,-1].reshape((lenU[0],1))  # for flow, there is no slip in the top and bottom boundary
+            Usouth = - U[:,0].reshape((lenU[0],1))
+            U = np.concatenate((Usouth, U), axis=1)
+            U = np.concatenate((U, Unorth), axis=1)
 
-        lenV = V.shape
-        Veast = -V[-1,:].reshape((1, lenV[1])) #no vertical velocity
-        Vwest = -V[0,:].reshape((1, lenV[1]))
-        V = np.concatenate((Vwest, V), axis=0)
-        V = np.concatenate((V, Veast), axis=0)
+            lenV = V.shape
+            Veast = -V[-1,:].reshape((1, lenV[1])) #no vertical velocity
+            Vwest = -V[0,:].reshape((1, lenV[1]))
+            V = np.concatenate((Vwest, V), axis=0)
+            V = np.concatenate((V, Veast), axis=0)
 
-        lenV = V.shape
-        
-        Vnorth= np.zeros((lenV[0], 1)) #no slip condition
-        Vsouth= np.zeros((lenV[0], 1))
-        V = np.concatenate((Vsouth, V), axis=1)
-        V = np.concatenate((V, Vnorth), axis=1)
+            lenV = V.shape
+            
+            Vnorth= np.zeros((lenV[0], 1)) #no slip condition
+            Vsouth= np.zeros((lenV[0], 1))
+            V = np.concatenate((Vsouth, V), axis=1)
+            V = np.concatenate((V, Vnorth), axis=1)
+
+        elif (self.Fy_ext>0 and self.Fx_ext==0):
+            # --- V is the streamwise velocity (y-direction) ---
+            lenV = V.shape
+            # Periodic boundary conditions in the y-direction (axis 1)
+            Vsouth = V[:, -1].reshape((lenV[0], 1))
+            Vnorth = V[:, 0].reshape((lenV[0], 1))
+            V = np.concatenate((Vsouth, V), axis=1)
+            V = np.concatenate((V, Vnorth), axis=1)
+
+            # No-slip condition at west and east walls (axis 0)
+            lenV = V.shape
+            Vwest = -V[0, :].reshape((1, lenV[1]))
+            Veast = -V[-1, :].reshape((1, lenV[1]))
+            V = np.concatenate((Vwest, V), axis=0)
+            V = np.concatenate((V, Veast), axis=0)
+
+            # --- U is the wall-normal velocity (x-direction) ---
+            lenU = U.shape
+            # Periodic boundary conditions in the y-direction (axis 1) 
+            # with staggered grid anti-symmetric sign convention
+            Usouth = -U[:, -1].reshape((lenU[0], 1))
+            Unorth = -U[:, 0].reshape((lenU[0], 1))
+            U = np.concatenate((Usouth, U), axis=1)
+            U = np.concatenate((U, Unorth), axis=1)
+
+            # No-penetration (zero velocity) at west and east walls (axis 0)
+            lenU = U.shape
+            Uwest = np.zeros((1, lenU[1]))
+            Ueast = np.zeros((1, lenU[1]))
+            U = np.concatenate((Uwest, U), axis=0)
+            U = np.concatenate((U, Ueast), axis=0)
+
+        else:
+            print("Poiseuille flow only allows external force in one direction.")
+            sys.exit()
         
 
         return U,V

@@ -30,8 +30,9 @@ def PressureField(P, Nx, Ny, time):
         'experiment',
         'images',
         'pressure_field',
-        f'{config.trial}_pressure_time_{int(round(time * 1000))}ms.png',
+        f'{config.trial}_pressure_time_{int(round(time * 1000))}ms_Fx={config.Fx_ext}_Fy={config.Fy_ext}.png',
     )
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     fig.savefig(filename)
     plt.close(fig)
+    print(f"Pressure Plot saved to {filename}.")
