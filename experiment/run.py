@@ -1,7 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import config
 import os
-from solver_main import NavierStokesSolver2d, LidCavitySolver, FourMovingWalls, TwoMovingWalls, Poiseuille, Poiseuille_with_thing
+from solver_main import NavierStokesSolver2d, LidCavitySolver, FourMovingWalls, TwoMovingWalls, Poiseuille
 
 Nx = 31
 Ny = 31
@@ -15,6 +16,9 @@ dt = 0.00001 # for poiseuille
 rho = 10
 u_max = 1
 viscosity = 10
+fx_ext = 10.0
+fy_ext = 0.0
 
-solver = Poiseuille_with_thing(Nx,Ny,dt,viscosity,rho,output_dir,base_dir,Fx_ext=10.0)
+config.init(Nx, Ny, trial, base_dir, output_dir, dt, rho, u_max, viscosity, fx_ext, fy_ext)
+solver = Poiseuille()
 solver.run()

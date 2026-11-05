@@ -1,5 +1,5 @@
 import numpy as np 
-from operators.average import average
+from models.operators.average import average
 
 # def stagger_back(U: np.ndarray, V: np.ndarray, W: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 def stagger_back(U: np.ndarray, V: np.ndarray):

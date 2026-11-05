@@ -1,8 +1,5 @@
 import numpy as np 
-from operators.average import average
-
-# def advective(U: np.ndarray, V: np.ndarray, W: np.ndarray,
-#               dx: float, dy: float, dz: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+from models.operators.average import average
     
 def advective(U: np.ndarray, V: np.ndarray,
               dx: float, dy: float):

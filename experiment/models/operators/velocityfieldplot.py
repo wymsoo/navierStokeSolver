@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 import os
-from operators.stagger import stagger_back
+from models.operators.stagger import stagger_back
+import config
 
 
 def velocityField(U, V, P, Nx, Ny, time, path_dir):
@@ -37,10 +38,16 @@ def velocityField(U, V, P, Nx, Ny, time, path_dir):
     cbar_xy = fig.colorbar(quiver_xy, ax=ax_xy)
     cbar_xy.set_label('Velocity Magnitude')
 
-    plt.suptitle(f'Velocity and Pressure Field at Time = {time*1000:.2f}', fontsize=14)
+    plt.suptitle(f'Velocity Field at Time = {time*1000:.2f}ms', fontsize=14)
     plt.tight_layout()
     os.makedirs(path_dir,exist_ok=True)
-    path = path_dir
-    filename = f'/velocity_time_{int(time*1000)}.png'
-    fig.savefig(path+filename)
+    filename = os.path.join(
+        path_dir,
+        'experiment',
+        'images',
+        'velocity_field',
+        f'{config.trial}_velocity_time_{int(round(time * 1000))}ms.png',
+    )
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    fig.savefig(filename)
     plt.close(fig)

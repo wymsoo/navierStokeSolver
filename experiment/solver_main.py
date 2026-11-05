@@ -1,37 +1,38 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from operators.advective import advective
-from operators.viscous import viscous
-from operators.solve_poisson import Solve_Poisson
-from operators.velocityfieldplot import velocityField
-from operators.pressurefieldplot import PressureField
-from operators.plot_loss import plot_loss
+from models.operators.advective import advective
+from models.operators.viscous import viscous
+from models.operators.solve_poisson import Solve_Poisson
+from models.operators.velocityfieldplot import velocityField
+from models.operators.pressurefieldplot import PressureField
+from models.operators.plot_loss import plot_loss
 import os
 from pathlib import Path
+import config
 
 class NavierStokesSolver2d:
-    def __init__(self,Nx,Ny,dt, mu, rho, fluid_data_output_dir, base_dir, max_ts=10000, epsilon=5e-10, L=1.0,W=1.0,Fx_ext=0.0, Fy_ext=0.0):
-        self.Nx = Nx
-        self.Ny = Ny
-        self.dt = dt
-        self.l = L
-        self.w = W
-        self.dx = L/Nx
-        self.dy = W/Ny
-        self.d_viscosity = mu
-        self.density = rho
-        self.k_viscosity = mu/rho
-        self.epsilon = epsilon
-        self.Fx_ext = Fx_ext
-        self.Fy_ext = Fy_ext
-        self.max_ts = max_ts
+    def __init__(self):
+        self.Nx = config.Nx
+        self.Ny = config.Ny
+        self.dt = config.dt_fixed
+        self.l = config.L
+        self.w = config.W
+        self.dx = config.dx
+        self.dy = config.dy
+        self.d_viscosity = config.viscosity
+        self.density = config.rho
+        self.k_viscosity = config.viscosity / config.rho
+        self.epsilon = config.epsilon
+        self.Fx_ext = config.Fx_ext
+        self.Fy_ext = config.Fy_ext
+        self.max_ts = config.max_ts
         self.U = np.zeros((self.Nx - 1, self.Ny))      # u-velocity at x-faces
         self.V = np.zeros((self.Nx, self.Ny - 1))
         self.P = np.zeros((self.Nx-1,self.Ny-1))
         self.iter = []
         self.loss = []
-        self.fluid_data_output_dir = fluid_data_output_dir
-        self.base_dir = base_dir
+        self.fluid_data_output_dir = config.output_dir
+        self.base_dir = config.base_dir
 
     def compute_reynold(self,u_max,L_flowdir):
         if L_flowdir==0:
@@ -45,7 +46,7 @@ class NavierStokesSolver2d:
         return viscous(Ubc,Vbc,self.k_viscosity,self.dx,self.dy)
         
     def advective(self,Ubc,Vbc):
-        return advective(Ubc,Vbc,self.dx,self.dy)
+        return advective(Ubc,Vbc, self.dx, self.dy)
 
     def solve_poisson(self, Ustar, Vstar, dt):
         return Solve_Poisson(self, Ustar,Vstar,self.dx, self.dy, self.Nx, self.Ny, dt)
@@ -136,7 +137,7 @@ class NavierStokesSolver2d:
             self.loss.append(total_loss)
 
             time += dt
-        
+
             np.savez_compressed(
                 os.path.join(self.fluid_data_output_dir,f"data_t={i}.npz"),
                 u=self.U,
@@ -146,8 +147,6 @@ class NavierStokesSolver2d:
                 dx=self.dx,
                 dy=self.dy
             )
-            time += dt
-
         self.plot_fields(time, self.base_dir)
         print("Simulation completed.")
         u_max = np.max(self.U)
@@ -160,8 +159,8 @@ class NavierStokesSolver2d:
 
         
 class LidCavitySolver(NavierStokesSolver2d):
-    def __init__(self,Nx,Ny,dt, mu, rho, fluid_data_output_dir, base_dir, max_ts=10000, epsilon=5e-10, L=1.0,W=1.0,Fx_ext=0.0,Fy_ext=0.0):
-        super().__init__(Nx,Ny,dt, mu, rho, fluid_data_output_dir, base_dir, max_ts, epsilon, L,W,Fx_ext, Fy_ext)
+    def __init__(self):
+        super().__init__()
     def set_boundary_condition(self,U,V):
         lenU = U.shape
         # Apply north and south boundaries for U
@@ -192,8 +191,8 @@ class LidCavitySolver(NavierStokesSolver2d):
         return U, V
 
 class FourMovingWalls(NavierStokesSolver2d):
-    def __init__(self,Nx,Ny,dt, mu, rho, fluid_data_output_dir, base_dir, max_ts=10000, epsilon=5e-10, L=1.0,W=1.0,Fx_ext=0.0, Fy_ext=0.0):
-        super().__init__(Nx,Ny,dt, mu, rho, fluid_data_output_dir, base_dir, max_ts, epsilon, L,W,Fx_ext, Fy_ext)
+    def __init__(self):
+        super().__init__()
     def set_boundary_condition(self,U,V,u_wall=1.0):
         # =========================================================
         # 1. HORIZONTAL VELOCITY (U)
@@ -237,8 +236,8 @@ class FourMovingWalls(NavierStokesSolver2d):
         return U_padded, V_padded
 
 class TwoMovingWalls(NavierStokesSolver2d):
-    def __init__(self,Nx,Ny,dt, mu, rho, fluid_data_output_dir, base_dir, max_ts=10000, epsilon=5e-10, L=1.0,W=1.0,Fx_ext=0.0,Fy_ext=0.0):
-        super().__init__(Nx,Ny,dt, mu, rho, fluid_data_output_dir, base_dir, max_ts, epsilon, L,W, Fx_ext,Fy_ext)
+    def __init__(self):
+        super().__init__()
     def set_boundary_condition(self,U,V,u_wall=1.0):
 
         lenU = U.shape
@@ -269,8 +268,8 @@ class TwoMovingWalls(NavierStokesSolver2d):
         return U,V
 
 class Poiseuille(NavierStokesSolver2d):
-    def __init__(self,Nx,Ny,dt, mu, rho, fluid_data_output_dir, base_dir, max_ts=10000, epsilon=5e-10, L=1.0,W=1.0,Fx_ext=10.0,Fy_ext=0.0):
-        super().__init__(Nx,Ny,dt, mu, rho, fluid_data_output_dir, base_dir, max_ts, epsilon, L,W, Fx_ext,Fy_ext)
+    def __init__(self):
+        super().__init__()
     def set_boundary_condition(self,U,V,u_wall=1.0):
         lenU = U.shape
         Uwest = U[-1,:].reshape((1,lenU[1]))

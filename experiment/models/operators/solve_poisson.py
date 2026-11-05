@@ -1,7 +1,8 @@
 import numpy as np 
 from scipy.sparse.linalg import spsolve
-from operators.laplacian import Laplacian
-from operators.divergence import div
+from models.operators.laplacian import Laplacian
+from models.operators.divergence import div
+
 
 def Solve_Poisson(self, Ustar: np.ndarray, Vstar: np.ndarray, dx: float, dy: float, Nx: int, Ny: int, dt: float) -> np.ndarray:
 
