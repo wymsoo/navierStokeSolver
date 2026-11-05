@@ -3,30 +3,7 @@ from format_report import write_2d_markdown_report, format_equation
 import sys; sys.path.append('../')
 import os
 import argparse
-
-
-### Adjust these parameters according to the shape of input files
-########################################################################
-Nx = 81
-Ny = 81
-# dt = 0.0001
-# dt = 1e-05 # for 1d flow
-dx = 1.0 / Nx
-dy = 1.0 / Ny
-########################################################################
-
-
-epsilon = 7e-11
-G = 9.81
-rho = 100
-# D = 0.005
-D = 1.0
-viscosity = 10
-nu = viscosity/rho
-c_advective = 1
-c_pressure = 1/rho
-c_viscous = nu
-
+import config
 
 
 def count_files_scandir(directory):
@@ -67,13 +44,22 @@ def load_case_fields(output_directory, data_start):
     return fields
 
 def load_npz_files(output_directory, data_start):
-    snapshot_count = len(os.listdir(output_directory))
+    snapshot_files = [
+        filename
+        for filename in os.listdir(output_directory)
+        if filename.startswith("data_t=") and filename.endswith(".npz")
+    ]
+    snapshot_files.sort(key=lambda filename: int(filename[len("data_t="):-len(".npz")]))
+
     U = []
     V = []
     P = []
     dt_value = None
-    for index in range(data_start, snapshot_count + 1):
-        filepath = os.path.join(output_directory, f"data_t={index}.npz")
+    for filename in snapshot_files:
+        index = int(filename[len("data_t="):-len(".npz")])
+        if index < data_start:
+            continue
+        filepath = os.path.join(output_directory, filename)
         with np.load(filepath) as data:
             U.append(data["u"])
             V.append(data["v"])
@@ -82,6 +68,22 @@ def load_npz_files(output_directory, data_start):
                 dt_value = float(np.asarray(data["dt"]).item())
 
     return {"u": np.array(U), "v": np.array(V), "p": np.array(P), "dt": dt_value}
+
+
+def find_run_directories(input_directories):
+    run_directories = []
+    for input_directory in input_directories:
+        if not os.path.isdir(input_directory):
+            raise FileNotFoundError(f"Input directory does not exist: {input_directory}")
+
+        for directory, _, filenames in os.walk(input_directory):
+            if any(
+                filename.startswith("data_t=") and filename.endswith(".npz")
+                for filename in filenames
+            ):
+                run_directories.append(directory)
+
+    return list(dict.fromkeys(sorted(run_directories)))
 
 
 def load_case(output_directory, data_start, crop_t, crop_x, crop_y, fields=None):
@@ -95,12 +97,12 @@ def load_case(output_directory, data_start, crop_t, crop_x, crop_y, fields=None)
     print(np.array(U).shape, np.array(V).shape, np.array(P).shape)
 
 
-    ut, uy, uyy = gradient(U, case_dt, dy, axis=2)
-    _, ux, uxx = gradient(U, case_dt, dx, axis=1)
-    vt, vy, vyy = gradient(V, case_dt, dy, axis=2)
-    _, vx, vxx = gradient(V, case_dt, dx, axis=1)
-    _, px, _ = gradient(P, case_dt, dx, axis=1)
-    _, py, _ = gradient(P, case_dt, dy, axis=2)
+    ut, uy, uyy = gradient(U, case_dt, config.dy, axis=2)
+    _, ux, uxx = gradient(U, case_dt, config.dx, axis=1)
+    vt, vy, vyy = gradient(V, case_dt, config.dy, axis=2)
+    _, vx, vxx = gradient(V, case_dt, config.dx, axis=1)
+    _, px, _ = gradient(P, case_dt, config.dx, axis=1)
+    _, py, _ = gradient(P, case_dt, config.dy, axis=2)
 
 
     t_slice = slice(crop_t, U.shape[0]-crop_t)
@@ -122,8 +124,6 @@ def load_case(output_directory, data_start, crop_t, crop_x, crop_y, fields=None)
     )
     # compute operator matrix and dictionary keys
     oper_dict_v, dictionary_v = build_v_ns_dict(
-        # u_crop[2:-2,4:-4,4:-4],
-        # v_crop[2:-2,4:-4,4:-4],
         u_crop,
         v_crop,
         vx[t_slice, x_slice, y_slice],
@@ -148,83 +148,12 @@ def load_case(output_directory, data_start, crop_t, crop_x, crop_y, fields=None)
 
 def gradient(u, dt, dy, axis):
     ut = np.gradient(u, dt, axis=0, edge_order=2)
+    print("UT", ut)
     uy = np.gradient(u, dy, axis=axis, edge_order=2)
     uyy = np.gradient(uy, dy, axis=axis,edge_order=2)
     return ut, uy, uyy
 
 
-
-import numpy as np
-
-def gradient2(u, dt, dy, axis):
-    def slicing(ax):
-        ndim = u.ndim
-        s_minus2 = [slice(None)] * ndim
-        s_minus1 = [slice(None)] * ndim
-        s_interior = [slice(None)] * ndim  # Target for the interior result
-        s_plus1  = [slice(None)] * ndim
-        s_plus2  = [slice(None)] * ndim
-
-        s_minus2[ax] = slice(0, -4)    # i-2
-        s_minus1[ax] = slice(1, -3)    # i-1
-        s_interior[ax] = slice(2, -2)  # the interior region (i)
-        s_plus1[ax]  = slice(3, -1)    # i+1
-        s_plus2[ax]  = slice(4, None)  # i+2
-
-        return s_minus2, s_minus1, s_interior, s_plus1, s_plus2
-
-    # 1. Allocate arrays that are the EXACT same shape as u
-    ut = np.empty_like(u)
-    uy = np.empty_like(u)
-    uyy = np.empty_like(u)
-
-    # --- TIME DERIVATIVE (axis 0) ---
-    st_m2, st_m1, st_int, st_p1, st_p2 = slicing(0)
-    
-    # Calculate Interior
-    ut[tuple(st_int)] = (-u[tuple(st_p2)] + 8*u[tuple(st_p1)] - 8*u[tuple(st_m1)] + u[tuple(st_m2)]) / (12 * dt)
-    
-    # Calculate Boundaries (Left and Right edges)
-    ut[0,:,:] = (-25*u[0,:,:] + 48*u[1,:,:] - 36*u[2,:,:] + 16*u[3,:,:] - 3*u[4,:,:]) / (12 * dt)
-    ut[1,:,:] = (-3*u[0,:,:] - 10*u[1,:,:] + 18*u[2,:,:] - 6*u[3,:,:] + u[4,:,:]) / (12 * dt)
-    ut[-1,:,:] = (25*u[-1,:,:] - 48*u[-2,:,:] + 36*u[-3,:,:] - 16*u[-4,:,:] + 3*u[-5,:,:]) / (12 * dt)
-    ut[-2,:,:] = (3*u[-1,:,:] + 10*u[-2,:,:] - 18*u[-3,:,:] + 6*u[-4,:,:] - u[-5,:,:]) / (12 * dt)
-
-    # --- FIRST SPATIAL DERIVATIVE (axis 1 or 2) ---
-    s_m2, s_m1, s_int, s_p1, s_p2 = slicing(axis)
-    
-    # Calculate Interior
-    uy[tuple(s_int)] = (-u[tuple(s_p2)] + 8*u[tuple(s_p1)] - 8*u[tuple(s_m1)] + u[tuple(s_m2)]) / (12 * dy)
-    
-    # Calculate Boundaries
-    if axis == 1:
-        uy[:,0,:] = (-25*u[:,0,:] + 48*u[:,1,:] - 36*u[:,2,:] + 16*u[:,3,:] - 3*u[:,4,:]) / (12 * dy)
-        uy[:,1,:] = (-3*u[:,0,:] - 10*u[:,1,:] + 18*u[:,2,:] - 6*u[:,3,:] + u[:,4,:]) / (12 * dy)
-        uy[:,-1,:] = (25*u[:,-1,:] - 48*u[:,-2,:] + 36*u[:,-3,:] - 16*u[:,-4,:] + 3*u[:,-5,:]) / (12 * dy)
-        uy[:,-2,:] = (3*u[:,-1,:] + 10*u[:,-2,:] - 18*u[:,-3,:] + 6*u[:,-4,:] - u[:,-5,:]) / (12 * dy)
-    elif axis == 2:
-        uy[:,:,0] = (-25*u[:,:,0] + 48*u[:,:,1] - 36*u[:,:,2] + 16*u[:,:,3] - 3*u[:,:,4]) / (12 * dy)
-        uy[:,:,1] = (-3*u[:,:,0] - 10*u[:,:,1] + 18*u[:,:,2] - 6*u[:,:,3] + u[:,:,4]) / (12 * dy)
-        uy[:,:,-1] = (25*u[:,:,-1] - 48*u[:,:,-2] + 36*u[:,:,-3] - 16*u[:,:,-4] + 3*u[:,:,-5]) / (12 * dy)
-        uy[:,:,-2] = (3*u[:,:,-1] + 10*u[:,:,-2] - 18*u[:,:,-3] + 6*u[:,:,-4] - u[:,:,-5]) / (12 * dy)
-
-    # --- SECOND SPATIAL DERIVATIVE (axis 1 or 2 applied on uy) ---
-    # Calculate Interior
-    uyy[tuple(s_int)] = (-uy[tuple(s_p2)] + 8*uy[tuple(s_p1)] - 8*uy[tuple(s_m1)] + uy[tuple(s_m2)]) / (12 * dy)
-    
-    # Calculate Boundaries
-    if axis == 1:
-        uyy[:,0,:] = (-25*uy[:,0,:] + 48*uy[:,1,:] - 36*uy[:,2,:] + 16*uy[:,3,:] - 3*uy[:,4,:]) / (12 * dy)
-        uyy[:,1,:] = (-3*uy[:,0,:] - 10*uy[:,1,:] + 18*uy[:,2,:] - 6*uy[:,3,:] + uy[:,4,:]) / (12 * dy)
-        uyy[:,-1,:] = (25*uy[:,-1,:] - 48*uy[:,-2,:] + 36*uy[:,-3,:] - 16*uy[:,-4,:] + 3*uy[:,-5,:]) / (12 * dy)
-        uyy[:,-2,:] = (3*uy[:,-1,:] + 10*uy[:,-2,:] - 18*uy[:,-3,:] + 6*uy[:,-4,:] - uy[:,-5,:]) / (12 * dy)
-    elif axis == 2:
-        uyy[:,:,0] = (-25*uy[:,:,0] + 48*uy[:,:,1] - 36*uy[:,:,2] + 16*uy[:,:,3] - 3*uy[:,:,4]) / (12 * dy)
-        uyy[:,:,1] = (-3*uy[:,:,0] - 10*uy[:,:,1] + 18*uy[:,:,2] - 6*uy[:,:,3] + uy[:,:,4]) / (12 * dy)
-        uyy[:,:,-1] = (25*uy[:,:,-1] - 48*uy[:,:,-2] + 36*uy[:,:,-3] - 16*uy[:,:,-4] + 3*uy[:,:,-5]) / (12 * dy)
-        uyy[:,:,-2] = (3*uy[:,:,-1] + 10*uy[:,:,-2] - 18*uy[:,:,-3] + 6*uy[:,:,-4] - uy[:,:,-5]) / (12 * dy)
-
-    return ut, uy, uyy
 
 def build_ns_dict(u, v, uy, u_yy, ux, u_xx, p_x):
     dict_keys = []
@@ -298,7 +227,7 @@ def stridge1(X, Y, tol, lam, max_iter = 100):
         biginds_prev = biginds.copy()
         weights[:] = 0
         weights[biginds] = np.linalg.lstsq(
-            X_norm[:, biginds].T.dot(X[:, biginds]) + lam * np.eye(len(biginds)),
+            X_norm[:, biginds].T.dot(X_norm[:, biginds]) + lam * np.eye(len(biginds)),
             X_norm[:, biginds].T.dot(Y),
             rcond=None
         )[0]
@@ -352,8 +281,9 @@ def trainStridge(X, y, tol_values, lam, l0_penalty, seed=0):
 
 if __name__ == "__main__":
 
+    config.initialize_model_config() # initialize model
+
     parser = argparse.ArgumentParser(description="Learn the startup Poiseuille PDE from saved data.")
-    # parser.add_argument("--input", type=str, default=os.path.join(os.path.dirname(__file__), "startup_poiseuille_data.npz"))
     parser.add_argument("--lam", type=float, default=1e-8)
     parser.add_argument("--tol_min", type=float, default=1e-6)
     parser.add_argument("--tol_max", type=float, default=1e-2)
@@ -365,11 +295,7 @@ if __name__ == "__main__":
         "--input_directories",
         nargs="+",
         default=[
-            # os.path.join(os.path.dirname(__file__), "output_npz/2movingwalls_81"),
-            os.path.join(os.path.dirname(__file__), "output_npz/4movingwalls_31"),
-            os.path.join(os.path.dirname(__file__), "output_npz/lidcavity_31"),
-            os.path.join(os.path.dirname(__file__), "output_npz/poiseuille_vertical_31"),
-            os.path.join(os.path.dirname(__file__), "output_npz/poiseuille_31")
+            os.path.join(os.path.dirname(__file__), "output_npz"),
         ],
     )
     parser.add_argument("--crop_t", type=int, default=100, help="discard this many time layers near each temporal boundary")
@@ -385,6 +311,12 @@ if __name__ == "__main__":
 
     tol_values = np.logspace(np.log10(args.tol_min), np.log10(args.tol_max), args.num_tol)
 
+    input_directories = find_run_directories(args.input_directories)
+    if not input_directories:
+        raise FileNotFoundError(
+            "No data_t=*.npz snapshots found in the supplied input directories"
+        )
+    print(f"Loading {len(input_directories)} run directories")
 
     case_results = [
         load_case(
@@ -394,7 +326,7 @@ if __name__ == "__main__":
             args.crop_x,
             args.crop_y,
         )
-        for output_directory in args.input_directories
+        for output_directory in input_directories
     ]
 
     oper_dict = np.concatenate([result[0] for result in case_results])
@@ -417,8 +349,8 @@ if __name__ == "__main__":
         x_v, y_v, tol_values, args.lam, args.l0_penalty
     )
 
-    datashape = [case_results[i][6] for i in range(len(args.input_directories))]
-    datashape_cropped = [case_results[i][7] for i in range(len(args.input_directories))]
+    datashape = [case_results[i][6] for i in range(len(input_directories))]
+    datashape_cropped = [case_results[i][7] for i in range(len(input_directories))]
 
 
     write_2d_markdown_report(
@@ -440,20 +372,20 @@ if __name__ == "__main__":
         lam=args.lam,
         l0_penalty=args.l0_penalty,
         u_reference_coefficients={
-            "uu_x": -c_advective,
-            "vu_y": -c_advective,
-            "u_xx": c_viscous,
-            "u_yy": c_viscous,
-            "p_x": -c_pressure,
+            "uu_x": -config.c_advective,
+            "vu_y": -config.c_advective,
+            "u_xx": config.c_viscous,
+            "u_yy": config.c_viscous,
+            "p_x": -config.c_pressure,
         },
         v_reference_coefficients={
-            "uv_x": -c_advective,
-            "vv_y": -c_advective,
-            "v_xx": c_viscous,
-            "v_yy": c_viscous,
-            "p_y": -c_pressure,
+            "uv_x": -config.c_advective,
+            "vv_y": -config.c_advective,
+            "v_xx": config.c_viscous,
+            "v_yy": config.c_viscous,
+            "p_y": -config.c_pressure,
         },
-        input_directory=", ".join(args.input_directories),
+        input_directory=", ".join(input_directories),
     )
     print(f"Markdown U/V report written to: {args.report}")
 

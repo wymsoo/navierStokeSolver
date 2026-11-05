@@ -1,25 +1,7 @@
 import numpy as np 
 import os
+import config
 
-dt = 0.0001
-epsilon = 7e-11
-# Grid size
-Nx = 31
-Ny = 31
-dx = 1.0 / Nx
-dy = 1.0 / Ny
-G = 9.81
-rho = 1000
-u_max = 1
-v_max = 1
-# D = 0.005
-D = 1.0
-viscosity = 10
-Re = (rho * u_max * D) / viscosity
-nu = viscosity/rho
-c_advective = 1
-c_pressure = 1/rho
-c_viscous = nu
 def write_markdown_report(path, coefficients, descriptions, data_shape,
                           crop_shape, tol_best, train_error,
                           validation_error, data_start, crop_settings,
@@ -27,30 +9,30 @@ def write_markdown_report(path, coefficients, descriptions, data_shape,
                           reference_coefficients=None, input_directory=None,
                           data_shape_labels="(t, x, y)", velocity_label="u"):
     parameters = parameters or {
-        "rho": (rho, "kg m$^{-3}$", "Fluid density"),
-        "viscosity": (viscosity, "Pa s", "Dynamic viscosity"),
-        "nu": (nu, "m$^2$ s$^{-1}$", "Kinematic viscosity"),
+        "rho": (config.rho, "kg m$^{-3}$", "Fluid density"),
+        "viscosity": (config.viscosity, "Pa s", "Dynamic viscosity"),
+        "nu": (config.nu, "m$^2$ s$^{-1}$", "Kinematic viscosity"),
         f"{velocity_label}_max": (
-            u_max if velocity_label == "u" else v_max,
+            config.u_max if velocity_label == "u" else config.v_max,
             "m s$^{-1}$",
             "Characteristic velocity",
         ),
-        "D": (D, "m", "Characteristic length"),
-        "Re": (Re, "dimensionless", "Reynolds number"),
-        "G": (G, "m s$^{-2}$", "Body force"),
-        "Nx": (Nx, "cells", "Grid points in x"),
-        "Ny": (Ny, "cells", "Grid points in y"),
-        "dx": (dx, "m", "Grid spacing in x"),
-        "dy": (dy, "m", "Grid spacing in y"),
-        "dt": (dt, "s", "Time step"),
-        "epsilon": (epsilon, "-", "Numerical threshold"),
+        "D": (config.D, "m", "Characteristic length"),
+        "Re": (config.Re, "dimensionless", "Reynolds number"),
+        "Fx_ext": (config.Fx_ext, "m s$^{-2}$", "Body force"),
+        "Nx": (config.Nx, "cells", "Grid points in x"),
+        "Ny": (config.Ny, "cells", "Grid points in y"),
+        "dx": (config.dx, "m", "Grid spacing in x"),
+        "dy": (config.dy, "m", "Grid spacing in y"),
+        "dt": (config.dt, "s", "Time step"),
+        "epsilon": (config.epsilon, "-", "Numerical threshold"),
     }
     reference_coefficients = reference_coefficients or {
-        "uu_x": -c_advective,
-        "vu_y": -c_advective,
-        "u_xx": c_viscous,
-        "u_yy": c_viscous,
-        "p_x": -c_pressure,
+        "uu_x": -config.c_advective,
+        "vu_y": -config.c_advective,
+        "u_xx": config.c_viscous,
+        "u_yy": config.c_viscous,
+        "p_x": -config.c_pressure,
     }
     lhs = f"{velocity_label}_t"
     true_equation = [reference_coefficients.get(name, 0.0) for name in descriptions]
@@ -159,11 +141,11 @@ def write_2d_markdown_report(
     )
 
     v_reference_coefficients = v_reference_coefficients or {
-        "uv_x": -c_advective,
-        "vv_y": -c_advective,
-        "v_xx": c_viscous,
-        "v_yy": c_viscous,
-        "p_y": -c_pressure,
+        "uv_x": -config.c_advective,
+        "vv_y": -config.c_advective,
+        "v_xx": config.c_viscous,
+        "v_yy": config.c_viscous,
+        "p_y": -config.c_pressure,
     }
     v_true_equation = [
         v_reference_coefficients.get(name, 0.0) for name in v_descriptions

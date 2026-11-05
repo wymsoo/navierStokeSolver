@@ -347,7 +347,7 @@ class Poiseuille(NavierStokesSolver2d):
         self.periodic_pressure_x = self.Fx_ext != 0 and self.Fy_ext == 0
         self.periodic_pressure_y = self.Fy_ext != 0 and self.Fx_ext == 0
     def set_boundary_condition(self,U,V):
-        if (self.Fx_ext>0 and self.Fy_ext==0):
+        if abs(self.Fy_ext) <= abs(self.Fx_ext):
             lenU = U.shape
             Uwest = U[-1,:].reshape((1,lenU[1]))
             Ueast = U[0,:].reshape((1,lenU[1]))                            #periodic boundary conditions 
@@ -373,7 +373,7 @@ class Poiseuille(NavierStokesSolver2d):
             V = np.concatenate((Vsouth, V), axis=1)
             V = np.concatenate((V, Vnorth), axis=1)
 
-        elif (self.Fy_ext>0 and self.Fx_ext==0):
+        else:
             # --- V is the streamwise velocity (y-direction) ---
             lenV = V.shape
             # Periodic boundary conditions in the y-direction (axis 1)
@@ -404,11 +404,6 @@ class Poiseuille(NavierStokesSolver2d):
             Ueast = np.zeros((1, lenU[1]))
             U = np.concatenate((Uwest, U), axis=0)
             U = np.concatenate((U, Ueast), axis=0)
-
-        else:
-            print("Poiseuille flow only allows external force in one direction.")
-            sys.exit()
-        
 
         return U,V
 
