@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from models.operators.advective import advective
 from models.operators.viscous import viscous
 from models.operators.solve_poisson import Solve_Poisson
-from models.operators.velocityfieldplot import velocityField, velocityDirectionField
+from models.operators.velocityfieldplot import velocityField
 from models.operators.pressurefieldplot import PressureField
 from models.operators.plot_loss import plot_loss
 import sys
@@ -38,6 +38,9 @@ class NavierStokesSolver2d:
         self.stopping_bc_time = config.stopping_bc_time
         self.relaxation_time = config.relaxation_time
         self.active_boundary_condition = self.set_boundary_condition 
+        self.periodic_pressure_x = False
+        self.periodic_pressure_y = False
+        self.change_boundary_on_stop = True
         self.active_Fx_ext = self.Fx_ext
         self.active_Fy_ext = self.Fy_ext
         self.flow_stopped = False
@@ -61,7 +64,6 @@ class NavierStokesSolver2d:
 
     def plot_fields(self,time,path_dir):
         velocityField(self.U,self.V,self.P,self.Nx,self.Ny,time,path_dir)
-        velocityDirectionField(self.U,self.V,self.P,self.Nx,self.Ny,time,path_dir)
         PressureField(self.P,self.Nx,self.Ny,time)
         return
 
@@ -131,9 +133,12 @@ class NavierStokesSolver2d:
             and self.stopping_bc_time is not None
             and time >= self.stopping_bc_time
         ):
-            self.active_boundary_condition = self.stopping_bc
             self.active_Fx_ext = 0.0
             self.active_Fy_ext = 0.0
+            if self.change_boundary_on_stop:
+                self.active_boundary_condition = self.stopping_bc
+                self.periodic_pressure_x = False
+                self.periodic_pressure_y = False
             self.flow_stopped = True
 
     def run(self):
@@ -196,20 +201,21 @@ class NavierStokesSolver2d:
                 dy=self.dy
             )
 
-            can_check_convergence = (
-                not self.stopping_bc_conditions
-                or (
-                    self.flow_stopped
-                    and self.stopping_bc_time is not None
-                    and time >= self.stopping_bc_time + self.relaxation_time
-                )
+            relaxation_finished = (
+                self.stopping_bc_conditions
+                and self.flow_stopped
+                and self.stopping_bc_time is not None
+                and time >= self.stopping_bc_time + self.relaxation_time
             )
-            if can_check_convergence and total_loss < self.epsilon:
+            if relaxation_finished:
+                break
+
+            if not self.stopping_bc_conditions and total_loss <= self.epsilon:
                 break
 
         # uncomment this line if you want to plot the dynamic field changes
-            # if i % 50 == 0:
-            #     self.plot_fields(time, self.base_dir)
+            if i % 50 == 0:
+                self.plot_fields(time, self.base_dir)
 
         self.plot_fields(time, self.base_dir)
         print("Simulation completed.")
@@ -303,8 +309,10 @@ class FourMovingWalls(NavierStokesSolver2d):
 class TwoMovingWalls(NavierStokesSolver2d):
     def __init__(self):
         super().__init__()
+        self.change_boundary_on_stop = False
+        self.periodic_pressure_x = self.Fx_ext != 0 and self.Fy_ext == 0
+        self.periodic_pressure_y = self.Fy_ext != 0 and self.Fx_ext == 0
     def set_boundary_condition(self,U,V,u_wall=1.0):
-
         lenU = U.shape
         Uwest = U[-1,:].reshape((1,lenU[1]))
         Ueast = U[0,:].reshape((1,lenU[1]))                            #periodic boundary conditions 
@@ -335,6 +343,9 @@ class TwoMovingWalls(NavierStokesSolver2d):
 class Poiseuille(NavierStokesSolver2d):
     def __init__(self):
         super().__init__()
+        self.change_boundary_on_stop = False
+        self.periodic_pressure_x = self.Fx_ext != 0 and self.Fy_ext == 0
+        self.periodic_pressure_y = self.Fy_ext != 0 and self.Fx_ext == 0
     def set_boundary_condition(self,U,V):
         if (self.Fx_ext>0 and self.Fy_ext==0):
             lenU = U.shape

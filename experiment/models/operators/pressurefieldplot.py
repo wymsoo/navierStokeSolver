@@ -25,13 +25,27 @@ def PressureField(P, Nx, Ny, time):
     plt.colorbar(im1, ax=ax1)
     
     plt.tight_layout()
-    filename = os.path.join(
-        config.base_dir,
-        'experiment',
-        'images',
-        'pressure_field',
-        f'{config.trial}_pressure_time_{int(round(time * 1000))}ms_Fx={config.Fx_ext}_Fy={config.Fy_ext}.png',
-    )
+    if (config.stopping_bc_conditions):
+        filename = os.path.join(
+            config.base_dir,
+            'experiment',
+            'images',
+            f'{config.trial}',
+            'pressure_field',
+            f'flow_stopped_at_{config.stopping_bc_time}',
+            f't={int(round(time * 1000))}ms_Fx={config.Fx_ext}_Fy={config.Fy_ext}.png',
+        )
+    else:
+        filename = os.path.join(
+            config.base_dir,
+            'experiment',
+            'images',
+            f'{config.trial}',
+            'pressure_field',
+            'no_flow_stop',
+            f't={int(round(time * 1000))}ms_Fx={config.Fx_ext}_Fy={config.Fy_ext}.png',
+        )
+
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     fig.savefig(filename)
     plt.close(fig)

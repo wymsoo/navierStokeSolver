@@ -20,13 +20,22 @@ def velocityField(U, V, P, Nx, Ny, time, path_dir):
     V_xy = Vplot[:, :]
     
     vel_mag_xy = np.sqrt(U_xy**2 + V_xy**2)
-    normxy = plt.Normalize(vmin=0, vmax=np.round(np.max(vel_mag_xy),4))
+    # Keep colors comparable between snapshots: 1.0 is the reference speed.
+    normxy = plt.Normalize(vmin=0, vmax=1.0, clip=True)
     colormap = plt.colormaps['plasma']
-    colormapxy = colormap(normxy(vel_mag_xy))
 
-    for i in range(0, Nx):
-        for j in range(0, Ny):
-            quiver_xy = ax_xy.quiver(X_xy, Y_xy, U_xy, V_xy, vel_mag_xy, color=colormapxy[i,j])
+    quiver_xy = ax_xy.quiver(
+        X_xy,
+        Y_xy,
+        U_xy,
+        V_xy,
+        vel_mag_xy,
+        cmap=colormap,
+        norm=normxy,
+        angles='xy',
+        scale_units='xy',
+        scale=1.0,
+    )
 
 
     ax_xy.set_aspect('equal', adjustable='box')
@@ -41,14 +50,29 @@ def velocityField(U, V, P, Nx, Ny, time, path_dir):
     plt.suptitle(f'Velocity Field at Time = {time*1000:.2f}ms', fontsize=14)
     plt.tight_layout()
     os.makedirs(path_dir,exist_ok=True)
-    filename = os.path.join(
-        path_dir,
-        'experiment',
-        'images',
-        'velocity_field',
-        f'{config.trial}_velocity_time_{int(round(time * 1000))}ms_Fx={config.Fx_ext}_Fy={config.Fy_ext}.png',
-    )
+    if (config.stopping_bc_conditions):
+        filename = os.path.join(
+            path_dir,
+            'experiment',
+            'images',
+            f'{config.trial}',
+            'velocity_field',
+            f'flow_stopped_at_{config.stopping_bc_time}',
+            f't={int(round(time * 1000))}ms_Fx={config.Fx_ext}_Fy={config.Fy_ext}.png',
+        )
+    else:
+        filename = os.path.join(
+            path_dir,
+            'experiment',
+            'images',
+            f'{config.trial}',
+            'velocity_field',
+            'no_flow_stop',
+            f't={int(round(time * 1000))}ms_Fx={config.Fx_ext}_Fy={config.Fy_ext}.png',
+        )
+
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     fig.savefig(filename)
     plt.close(fig)
     print(f"Velocity Plot saved to {filename}.")
+

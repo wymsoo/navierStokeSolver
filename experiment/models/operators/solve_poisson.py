@@ -10,10 +10,17 @@ def Solve_Poisson(self, Ustar: np.ndarray, Vstar: np.ndarray, dx: float, dy: flo
     Ustarbc, Vstarbc = self.active_boundary_condition(Ustar, Vstar)
     
     # Compute divergence 
-    RHS = (1/dt) * div(Ustarbc, Vstarbc, dx, dy)
+    RHS = (self.density/dt) * div(Ustarbc, Vstarbc, dx, dy)
     
     # Create Laplacian operator
-    L = Laplacian(Nx, Ny, dx, dy)
+    L = Laplacian(
+        Nx,
+        Ny,
+        dx,
+        dy,
+        periodic_x=self.periodic_pressure_x,
+        periodic_y=self.periodic_pressure_y,
+    )
     
     # Reshape RHS to column vector
     rhs = RHS.reshape(Nx * Ny, 1, order='F')  # Use 'F' for Fortran-like column-major ordering
