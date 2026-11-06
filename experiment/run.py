@@ -9,12 +9,12 @@ from solver_main import NavierStokesSolver2d, LidCavitySolver, FourMovingWalls, 
 # 1. Select a flow
 # flow = "poiseuille"
 # flow = "twomovingwalls"
-# flow = "lidcavity"
-flow = "fourmovingwalls"
+flow = "lidcavity"
+# flow = "fourmovingwalls"
 
 # 2. Select Grid Size
-Nx = 31
-Ny = 31
+Nx = 81
+Ny = 81
 
 # 3. Define fluid parameters
 fx_ext = 0.0
@@ -24,13 +24,13 @@ u_max = 1
 viscosity = 10
 
 # define stopping conditions if desired
-# stopping_bc_conditions = True
-# stopping_bc_time = 0.5  # Physical time at which the boundary condition changes
-# relaxation_time = 0.1  # Physical time to simulate after the transition
+stopping_bc_conditions = True
+stopping_bc_time = 0.008  # Physical time at which the boundary condition changes
+relaxation_time = 0.01  # Physical time to simulate after the transition
 
-stopping_bc_conditions = False
-stopping_bc_time = 0.0  # Physical time at which the boundary condition changes
-relaxation_time = 0.0  # Physical time to simulate after the transition
+# stopping_bc_conditions = False
+# stopping_bc_time = 0.0  # Physical time at which the boundary condition changes
+# relaxation_time = 0.0  # Physical time to simulate after the transition
 
 
 # 4. System Setup
@@ -53,7 +53,10 @@ trial = f"{experiment_name}_{run_name}"
 output_dir = experiment_dir / run_name
 output_dir.mkdir()
 # initial dt for convergence, will be set to adaptive timesteps in runtime; values are by experiment
-dt = 0.00001 if (flow=="poiseuille" or flow == "twomovingwalls") else 0.0000001
+# dt = 0.00001 if (flow=="poiseuille" or flow == "twomovingwalls") else 0.0000001
+
+# non-adpative time-steps
+dt = 0.00001
 
 
 # 5. Initialize solver with parameters

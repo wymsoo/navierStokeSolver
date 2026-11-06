@@ -4,6 +4,7 @@ import sys; sys.path.append('../')
 import os
 import argparse
 import config
+import matplotlib.pyplot as plt
 
 
 def count_files_scandir(directory):
@@ -54,7 +55,6 @@ def load_npz_files(output_directory, data_start):
     U = []
     V = []
     P = []
-    dt_value = None
     for filename in snapshot_files:
         index = int(filename[len("data_t="):-len(".npz")])
         if index < data_start:
@@ -64,10 +64,11 @@ def load_npz_files(output_directory, data_start):
             U.append(data["u"])
             V.append(data["v"])
             P.append(data["p"])
-            if dt_value is None and "dt" in data:
-                dt_value = float(np.asarray(data["dt"]).item())
+            dt_value = data["dt"]
+            dx_value = data["dx"]
+            dy_value = data["dy"]
 
-    return {"u": np.array(U), "v": np.array(V), "p": np.array(P), "dt": dt_value}
+    return {"u": np.array(U), "v": np.array(V), "p": np.array(P), "dt": dt_value, "dx": dx_value, "dy": dy_value}
 
 
 def find_run_directories(input_directories):
@@ -97,15 +98,21 @@ def load_case(output_directory, data_start, crop_t, crop_x, crop_y, fields=None)
     print(np.array(U).shape, np.array(V).shape, np.array(P).shape)
 
 
-    ut, uy, uyy = gradient(U, case_dt, config.dy, axis=2)
-    _, ux, uxx = gradient(U, case_dt, config.dx, axis=1)
-    vt, vy, vyy = gradient(V, case_dt, config.dy, axis=2)
-    _, vx, vxx = gradient(V, case_dt, config.dx, axis=1)
-    _, px, _ = gradient(P, case_dt, config.dx, axis=1)
-    _, py, _ = gradient(P, case_dt, config.dy, axis=2)
+    ut, uy, uyy = gradient(U, case_dt, fields["dy"], axis=2)
+    _, ux, uxx = gradient(U, case_dt, fields["dx"], axis=1)
+    vt, vy, vyy = gradient(V, case_dt, fields["dy"], axis=2)
+    _, vx, vxx = gradient(V, case_dt, fields["dx"], axis=1)
+    _, px, _ = gradient(P, case_dt, fields["dx"], axis=1)
+    _, py, _ = gradient(P, case_dt, fields["dy"], axis=2)
 
+    n_time = U.shape[0]
+    if crop_t < 0:
+        raise ValueError("crop_t must be non-negative")
 
-    t_slice = slice(crop_t, U.shape[0]-crop_t)
+    # Keep the transient start and limit tail cropping to at most half the data.
+    end_index = max(n_time - crop_t, (n_time + 1) // 2)
+    t_slice = slice(0, end_index)
+    print(f"Keeping {end_index}/{n_time} time layers; cropping {n_time - end_index} from the end")
     x_slice = slice(crop_x, U.shape[1]-crop_x)
     y_slice = slice(crop_y, U.shape[2]-crop_y)
 
@@ -148,7 +155,6 @@ def load_case(output_directory, data_start, crop_t, crop_x, crop_y, fields=None)
 
 def gradient(u, dt, dy, axis):
     ut = np.gradient(u, dt, axis=0, edge_order=2)
-    print("UT", ut)
     uy = np.gradient(u, dy, axis=axis, edge_order=2)
     uyy = np.gradient(uy, dy, axis=axis,edge_order=2)
     return ut, uy, uyy
@@ -165,6 +171,9 @@ def build_ns_dict(u, v, uy, u_yy, ux, u_xx, p_x):
     ns_dict['u_xx'] = u_xx
     ns_dict['u_yy'] = u_yy
     ns_dict['p_x'] = p_x
+    ns_dict['u_px'] = u*p_x
+    ns_dict['v_px'] = v*p_x
+    ns_dict['uu_xx'] = u * u_xx
 
     for key, val in ns_dict.items():
         dict_keys.append(key)
@@ -186,6 +195,9 @@ def build_v_ns_dict(u, v, vx, v_xx, vy, v_yy, p_y):
         'v_xx': v_xx,
         'v_yy': v_yy,
         'p_y': p_y,
+        'vp_y': v*p_y,
+        'up_y': u*p_y,
+        'vv_yy': v*v_yy
     }
 
     for key, val in ns_dict.items():
@@ -207,17 +219,22 @@ def stridge1(X, Y, tol, lam, max_iter = 100):
     #normalise theta
     norm = np.linalg.norm(X, axis=0)
     norm[norm<1e-16] = 1.0
+    normy = np.linalg.norm(Y)
+    if normy < 1e-16:
+        normy = 1.0
     X_norm = X/norm
+    Y_norm = Y/normy
 
     # Calculate initial weights
-    weights = np.linalg.lstsq(X_norm.T @ X_norm + lam * np.eye(d), X_norm.T @ Y, rcond=None)[0]
+    weights = np.linalg.lstsq(X_norm.T @ X_norm + lam * np.eye(d), X_norm.T @ Y_norm, rcond=None)[0]
     # print("weights:",weights)
 
     if biginds.size == 0:
         return weights
 
     for iter in range(max_iter):
-        biginds = np.where(abs(weights/norm) >= tol)[0]
+        physical_weights = weights * normy / norm
+        biginds = np.where(abs(physical_weights) >= tol)[0]
         # If the weights do not change, break the loop
         if np.array_equal(biginds, biginds_prev):
             break
@@ -228,39 +245,58 @@ def stridge1(X, Y, tol, lam, max_iter = 100):
         weights[:] = 0
         weights[biginds] = np.linalg.lstsq(
             X_norm[:, biginds].T.dot(X_norm[:, biginds]) + lam * np.eye(len(biginds)),
-            X_norm[:, biginds].T.dot(Y),
+            X_norm[:, biginds].T.dot(Y_norm),
             rcond=None
         )[0]
 
-    biginds = np.where(abs(weights/norm)>= tol)[0]
+    physical_weights = weights * normy / norm
+    print("PHYSICAL WEIGHTS", physical_weights)
+    biginds = np.where(abs(physical_weights) >= tol)[0]
     if biginds.size > 0:
         weights[:] = 0.0
-        weights[biginds] = np.linalg.lstsq(X_norm[:, biginds], Y, rcond=None)[0]
+        weights[biginds] = np.linalg.lstsq(X_norm[:, biginds], Y_norm, rcond=None)[0]
+        weights = weights * normy / norm
     else:
         weights[:] = 0.0
 
-    return np.array(weights/norm)
+    return np.array(weights)
 
 def trainStridge(X, y, tol_values, lam, l0_penalty, seed=0):
     rng = np.random.default_rng(seed)
-
     n_samples = X.shape[0]
     train_size = int(n_samples * 0.8)
-    X_train, X_validate = X[:train_size], X[train_size:]
-    y_train, y_validate = y[:train_size], y[train_size:]
+    indices = rng.permutation(n_samples)
+    train_indices = indices[:train_size]
+    validate_indices = indices[train_size:]
+    X_train, X_validate = X[train_indices], X[validate_indices]
+    y_train, y_validate = y[train_indices], y[validate_indices]
+
+    w_best = np.linalg.lstsq(X_train, y_train, rcond=None)[0]
+    train_residual = y_train - X_train @ w_best
+    val_residual = y_validate - X_validate @ w_best
+    train_err_best = np.sqrt(np.mean(train_residual**2))
+    val_err_best = np.sqrt(np.mean(val_residual**2))
 
     score_best = np.inf
-    w_best = np.linalg.lstsq(X, y, rcond=None)[0]
-    train_err_best = np.linalg.norm(y_train - X_train @ w_best, 2) + l0_penalty * np.count_nonzero(w_best)
-    val_err_best = np.linalg.norm(y_validate - X_validate @ w_best, 2) + l0_penalty * np.count_nonzero(w_best)
     tol_best = 0
+    train_loss = []
+    val_loss = []
+    evaluated_tol_values = []
 
     for tolerance in tol_values:
         weights = stridge1(X_train, y_train, tolerance, lam)
-        train_err = np.linalg.norm(y_train - X_train @ weights, 2) / np.sqrt(y_train.size)
-        val_err = np.linalg.norm(y_validate - X_validate @ weights, 2)/np.sqrt(y_validate.size)
+        train_residual = y_train - X_train @ weights
+        val_residual = y_validate - X_validate @ weights
+        train_err = np.sqrt(np.mean(train_residual**2))
+        val_err = np.sqrt(np.mean(val_residual**2))
+        train_loss.append(train_err)
+        val_loss.append(val_err)
+        evaluated_tol_values.append(tolerance)
+        print("TOLERANCE:",tolerance)
+        print("TRAIN LOSS:", train_err)
+        print("VALIDATION LOSS:", val_err)
         score = val_err + l0_penalty * np.count_nonzero(np.abs(weights) > 1e-12)
-        if score <= score_best:
+        if score < score_best:
             # Improved: keep direction
             # print("error improved", train_err)
             score_best = score
@@ -273,7 +309,15 @@ def trainStridge(X, y, tol_values, lam, l0_penalty, seed=0):
 
 
 
-    return w_best, tol_best, train_err_best, val_err_best
+    return (
+        w_best,
+        tol_best,
+        train_err_best,
+        val_err_best,
+        train_loss,
+        val_loss,
+        evaluated_tol_values,
+    )
 
 
 
@@ -284,10 +328,12 @@ if __name__ == "__main__":
     config.initialize_model_config() # initialize model
 
     parser = argparse.ArgumentParser(description="Learn the startup Poiseuille PDE from saved data.")
-    parser.add_argument("--lam", type=float, default=1e-8)
-    parser.add_argument("--tol_min", type=float, default=1e-6)
-    parser.add_argument("--tol_max", type=float, default=1e-2)
-    parser.add_argument("--num_tol", type=int, default=40)
+    parser.add_argument("--lam", type=float, default=1e-6)
+    # parser.add_argument("--tol_min", type=float, default=1e-8)
+    # parser.add_argument("--tol_max", type=float, default=1e-2)
+    parser.add_argument("--tol_min", type=float, default=1e-2)
+    parser.add_argument("--tol_max", type=float, default=0.15)
+    parser.add_argument("--num_tol", type=int, default=10)
     parser.add_argument("--l0_penalty", type=float, default=1e-6)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--data_start", type=int, default=1)
@@ -298,7 +344,7 @@ if __name__ == "__main__":
             os.path.join(os.path.dirname(__file__), "output_npz"),
         ],
     )
-    parser.add_argument("--crop_t", type=int, default=100, help="discard this many time layers near each temporal boundary")
+    parser.add_argument("--crop_t", type=int, default=2000, help="discard this many time layers from the end")
     parser.add_argument("--crop_y", type=int, default=1, help="discard this many spatial points near each wall")
     parser.add_argument("--crop_x", type=int, default=1, help="discard this many spatial points near each wall")
     parser.add_argument(
@@ -310,6 +356,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     tol_values = np.logspace(np.log10(args.tol_min), np.log10(args.tol_max), args.num_tol)
+    print(tol_values)
 
     input_directories = find_run_directories(args.input_directories)
     if not input_directories:
@@ -336,7 +383,15 @@ if __name__ == "__main__":
         raise ValueError("All cases must use the same U dictionary ordering")
 
     x = oper_dict
-    w_best, tol_best, err_best, val_error = trainStridge(x,y,tol_values,args.lam, args.l0_penalty)
+    (
+        w_best,
+        tol_best,
+        err_best,
+        val_error,
+        train_loss,
+        val_loss,
+        evaluated_tol_values_u,
+    ) = trainStridge(x, y, tol_values, args.lam, args.l0_penalty)
 
     oper_dict_v = np.concatenate([result[3] for result in case_results])
     y_v = np.concatenate([result[4] for result in case_results])
@@ -345,15 +400,48 @@ if __name__ == "__main__":
         raise ValueError("All cases must use the same V dictionary ordering")
 
     x_v = oper_dict_v
-    w_best_v, tol_best_v, err_best_v, val_error_v = trainStridge(
+    (
+        w_best_v,
+        tol_best_v,
+        err_best_v,
+        val_error_v,
+        train_loss_v,
+        val_loss_v,
+        evaluated_tol_values_v,
+    ) = trainStridge(
         x_v, y_v, tol_values, args.lam, args.l0_penalty
     )
 
     datashape = [case_results[i][6] for i in range(len(input_directories))]
     datashape_cropped = [case_results[i][7] for i in range(len(input_directories))]
 
-
-    write_2d_markdown_report(
+    try:
+        fig = plt.figure(figsize=(18, 12))
+        ax1 = fig.add_subplot(1, 2, 1)
+        ax2 = fig.add_subplot(1, 2, 2)
+        ax1.plot(evaluated_tol_values_u, train_loss)
+        ax1.plot(evaluated_tol_values_u, val_loss)
+        ax1.set_xscale("log")
+        ax1.legend(["Training", "Validation"])
+        u_loss_values = np.concatenate((train_loss, val_loss))
+        ax1.set_ylim(np.min(u_loss_values), np.max(u_loss_values))
+        ax1.set_title("Training and Validation Loss of Weights for U field")
+        ax1.set_xlabel("Tolerance")
+        ax1.set_ylabel("Loss")
+        ax2.plot(evaluated_tol_values_v, train_loss_v)
+        ax2.plot(evaluated_tol_values_v, val_loss_v)
+        ax2.set_xscale("log")
+        ax2.legend(["Training", "Validation"])
+        v_loss_values = np.concatenate((train_loss_v, val_loss_v))
+        ax2.set_ylim(np.min(v_loss_values), np.max(v_loss_values))
+        ax2.set_title("Training and Validation Loss of Weights for V field")
+        ax2.set_xlabel("Tolerance")
+        ax2.set_ylabel("Loss")
+        plt.show()
+    except Exception as error:
+        print(f"Warning: loss plots could not be displayed: {error}")
+    finally:
+        write_2d_markdown_report(
         args.report,
         w_best,
         dictionary,

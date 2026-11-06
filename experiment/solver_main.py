@@ -147,14 +147,15 @@ class NavierStokesSolver2d:
         for i in range(1, self.max_ts + 1):
             self.update_boundary_condition(time)
 
-            dt = self.compute_timestep(dt_prev=dt, u_wall=1.0, cfl=0.3) # cfl 40% safety buffer below the theoretical 2D limit (0.5) 
+            # dt = self.compute_timestep(dt_prev=dt, u_wall=1.0, cfl=0.3) # cfl 40% safety buffer below the theoretical 2D limit (0.5) 
+            step_dt = dt
             if (
                 not self.flow_stopped
                 and self.stopping_bc_conditions
                 and self.stopping_bc_time is not None
                 and time < self.stopping_bc_time < time + dt
             ):
-                dt = self.stopping_bc_time - time
+                step_dt = self.stopping_bc_time - time
             # Set Boundary Conditions
             U_copy = self.U.copy()
             V_copy = self.V.copy()
@@ -165,19 +166,19 @@ class NavierStokesSolver2d:
             viscousU, viscousV = self.viscous(Ubc, Vbc)
             
             # Compute intermediate velocities
-            Ustar = U_copy - advectU * dt + viscousU * dt + self.active_Fx_ext * dt
-            Vstar = V_copy - advectV * dt + viscousV * dt + self.active_Fy_ext * dt
+            Ustar = U_copy - advectU * step_dt + viscousU * step_dt + self.active_Fx_ext * step_dt
+            Vstar = V_copy - advectV * step_dt + viscousV * step_dt + self.active_Fy_ext * step_dt
             
             # Solve Poisson's equation for pressure
-            self.P = self.solve_poisson(Ustar, Vstar, dt)
+            self.P = self.solve_poisson(Ustar, Vstar, step_dt)
             P_copy = self.P.copy()
             # Compute pressure gradients
             Px = np.diff(P_copy, axis=0) / self.dx  # x-direction
             Py = np.diff(P_copy, axis=1) / self.dy  # y-direction
             
             # Apply pressure correction
-            U_new = Ustar - dt * Px / self.density
-            V_new = Vstar - dt * Py / self.density
+            U_new = Ustar - step_dt * Px / self.density
+            V_new = Vstar - step_dt * Py / self.density
 
             U_loss = np.sum((U_new-U_copy)**2/(self.Nx*self.Ny)) #MSE
             V_loss = np.sum((V_new-V_copy)**2/(self.Nx*self.Ny))
@@ -189,14 +190,14 @@ class NavierStokesSolver2d:
             self.iter.append(i)
             self.loss.append(total_loss)
 
-            time += dt
+            time += step_dt
 
             np.savez_compressed(
                 os.path.join(self.fluid_data_output_dir,f"data_t={i}.npz"),
                 u=self.U,
                 v=self.V,
                 p=self.P,
-                dt=dt,
+                dt=step_dt,
                 dx=self.dx,
                 dy=self.dy
             )

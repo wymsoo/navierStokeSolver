@@ -21,7 +21,7 @@ def initialize_model_config():
     c_viscous = nu
 
     # Report metadata retained for compatibility with the report formatter.
-    dt = 0.0000001
+    dt = 0.0001
     u_max = 1
     v_max = 1
     Re = (rho * u_max * D) / viscosity

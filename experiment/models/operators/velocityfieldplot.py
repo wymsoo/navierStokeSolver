@@ -58,7 +58,7 @@ def velocityField(U, V, P, Nx, Ny, time, path_dir):
             f'{config.trial}',
             'velocity_field',
             f'flow_stopped_at_{config.stopping_bc_time}',
-            f't={int(round(time * 1000))}ms_Fx={config.Fx_ext}_Fy={config.Fy_ext}.png',
+            f't={int(round(time/config.dt_fixed))}ms_Fx={config.Fx_ext}_Fy={config.Fy_ext}.png',
         )
     else:
         filename = os.path.join(
@@ -68,7 +68,7 @@ def velocityField(U, V, P, Nx, Ny, time, path_dir):
             f'{config.trial}',
             'velocity_field',
             'no_flow_stop',
-            f't={int(round(time * 1000))}ms_Fx={config.Fx_ext}_Fy={config.Fy_ext}.png',
+            f't={int(round(time/config.dt_fixed))}ms_Fx={config.Fx_ext}_Fy={config.Fy_ext}.png',
         )
 
     os.makedirs(os.path.dirname(filename), exist_ok=True)
