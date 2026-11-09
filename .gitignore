@@ -25,3 +25,11 @@ old_data_experiment/
 images/
 
 storage/
+
+old_models/
+
+good_results/
+
+history_trials/
+
+one_dir_flow_output_npz/

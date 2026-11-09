@@ -9,28 +9,54 @@ from solver_main import NavierStokesSolver2d, LidCavitySolver, FourMovingWalls, 
 # 1. Select a flow
 # flow = "poiseuille"
 # flow = "twomovingwalls"
-flow = "lidcavity"
+# flow = "lidcavity"
 # flow = "fourmovingwalls"
+# side = "W"  # Moving wall for lidcavity: "N", "E", "S", or "W"
 
 # 2. Select Grid Size
 Nx = 81
 Ny = 81
 
 # 3. Define fluid parameters
-fx_ext = 0.0
-fy_ext = 0.0
-rho = 10
-u_max = 1
-viscosity = 10
+# fx_ext = 0.0
+# fy_ext = 0.0
+# rho = 10
+# u_max = 1
+# viscosity = 10
+
+flow_types = ['poiseuille','twomovingwalls','lidcavity','fourmovingwalls']
+
+for flow in flow_types:
+    Nx = 81
+    Ny = 81
+
+    if flow=='poiseuille' or flow=='twomovingwalls':
+        fx = [10.0, 0]
+        fy = [0.0, 10.0]
+        for fx,fy in enumerate([fx,fy]):
+            fx_ext = fx
+            fy_ext = fy
+    else:
+        fx_ext = 0.0
+        fy_ext = 0.0
+
+    if flow == 'lidcavity':
+        dir = ['N','E','S','W']
+        for direction in dir:
+            side = direction
+
+    rho = 10
+    u_max = 1
+    viscosity = 10
 
 # define stopping conditions if desired
-stopping_bc_conditions = True
-stopping_bc_time = 0.008  # Physical time at which the boundary condition changes
-relaxation_time = 0.01  # Physical time to simulate after the transition
+# stopping_bc_conditions = True
+# stopping_bc_time = 0.008  # Physical time at which the boundary condition changes
+# relaxation_time = 0.01  # Physical time to simulate after the transition
 
-# stopping_bc_conditions = False
-# stopping_bc_time = 0.0  # Physical time at which the boundary condition changes
-# relaxation_time = 0.0  # Physical time to simulate after the transition
+stopping_bc_conditions = False
+stopping_bc_time = 0.0  # Physical time at which the boundary condition changes
+relaxation_time = 0.0  # Physical time to simulate after the transition
 
 
 # 4. System Setup
@@ -92,7 +118,7 @@ match flow:
     case "poiseuille":
         solver = Poiseuille()
     case "lidcavity":
-        solver = LidCavitySolver()
+        solver = LidCavitySolver(side=side)
     case "fourmovingwalls":
         solver = FourMovingWalls()
     case "twomovingwalls":

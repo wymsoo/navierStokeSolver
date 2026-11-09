@@ -2,6 +2,7 @@ import numpy as np
 from format_report import write_2d_markdown_report, format_equation
 import sys; sys.path.append('../')
 import os
+from experiment.models.operators.stagger import stagger_back
 import argparse
 import config
 import matplotlib.pyplot as plt
@@ -55,20 +56,53 @@ def load_npz_files(output_directory, data_start):
     U = []
     V = []
     P = []
+    time_steps = []
+    dx_value = None
+    dy_value = None
+    field_shapes = {}
     for filename in snapshot_files:
         index = int(filename[len("data_t="):-len(".npz")])
         if index < data_start:
             continue
         filepath = os.path.join(output_directory, filename)
         with np.load(filepath) as data:
-            U.append(data["u"])
-            V.append(data["v"])
-            P.append(data["p"])
-            dt_value = data["dt"]
-            dx_value = data["dx"]
-            dy_value = data["dy"]
+            required_fields = {"u", "v", "p", "dt", "dx", "dy"}
+            missing_fields = required_fields.difference(data.files)
+            if missing_fields:
+                raise ValueError(f"Snapshot {filepath} is missing fields: {sorted(missing_fields)}")
 
-    return {"u": np.array(U), "v": np.array(V), "p": np.array(P), "dt": dt_value, "dx": dx_value, "dy": dy_value}
+            snapshot_fields = {name: np.asarray(data[name]) for name in ("u", "v", "p")}
+            for name, field in snapshot_fields.items():
+                if field.ndim != 2 or not np.issubdtype(field.dtype, np.number):
+                    raise ValueError(f"Snapshot field {name!r} in {filepath} must be a numeric 2D array")
+                if name in field_shapes and field.shape != field_shapes[name]:
+                    raise ValueError(f"Field {name!r} has inconsistent shapes in {output_directory}")
+                field_shapes[name] = field.shape
+
+            dt_value = float(np.asarray(data["dt"]).item())
+            snapshot_dx = float(np.asarray(data["dx"]).item())
+            snapshot_dy = float(np.asarray(data["dy"]).item())
+            if not np.isfinite(dt_value) or dt_value <= 0:
+                raise ValueError(f"Snapshot time step must be positive and finite: {filepath}")
+            if not np.isfinite(snapshot_dx) or snapshot_dx <= 0 or not np.isfinite(snapshot_dy) or snapshot_dy <= 0:
+                raise ValueError(f"Snapshot grid spacing must be positive and finite: {filepath}")
+            if dx_value is not None and not np.isclose(snapshot_dx, dx_value):
+                raise ValueError(f"Inconsistent dx values in {output_directory}")
+            if dy_value is not None and not np.isclose(snapshot_dy, dy_value):
+                raise ValueError(f"Inconsistent dy values in {output_directory}")
+
+            U.append(snapshot_fields["u"])
+            V.append(snapshot_fields["v"])
+            P.append(snapshot_fields["p"])
+            time_steps.append(dt_value)
+            dx_value = snapshot_dx
+            dy_value = snapshot_dy
+
+    if not time_steps:
+        raise ValueError(f"No snapshots at or after data_start={data_start} in {output_directory}")
+
+    time = np.cumsum(time_steps) - time_steps[0]
+    return {"u": np.array(U), "v": np.array(V), "p": np.array(P), "time": time, "dx": dx_value, "dy": dy_value}
 
 
 def find_run_directories(input_directories):
@@ -92,60 +126,79 @@ def load_case(output_directory, data_start, crop_t, crop_x, crop_y, fields=None)
         # fields = load_case_fields(output_directory, data_start)
         fields = load_npz_files(output_directory, data_start)
 
-    case_dt = fields.get("dt") #or dt
-    print("CASE DT", case_dt)
-    U, V, P = fields["u"][:,:,:-1], fields["v"][:,:-1,:], fields["p"][:,:-1,:-1]
+    case_time = fields.get("time", fields.get("dt"))
+    if case_time is None:
+        raise ValueError(f"No time-step metadata found for {output_directory}")
+    print("CASE TIME", case_time)
+    raw_u, raw_v, P = fields["u"], fields["v"], fields["p"]
+    if raw_u.shape == raw_v.shape == P.shape:
+        U, V = raw_u, raw_v
+    else:
+        U, V = stagger_back(raw_u, raw_v)
+    if U.shape != P.shape or V.shape != P.shape:
+        raise ValueError(
+            f"Velocity and pressure grids do not align after staggering in {output_directory}: "
+            f"U={U.shape}, V={V.shape}, P={P.shape}"
+        )
     print(np.array(U).shape, np.array(V).shape, np.array(P).shape)
 
 
-    ut, uy, uyy = gradient(U, case_dt, fields["dy"], axis=2)
-    _, ux, uxx = gradient(U, case_dt, fields["dx"], axis=1)
-    vt, vy, vyy = gradient(V, case_dt, fields["dy"], axis=2)
-    _, vx, vxx = gradient(V, case_dt, fields["dx"], axis=1)
-    _, px, _ = gradient(P, case_dt, fields["dx"], axis=1)
-    _, py, _ = gradient(P, case_dt, fields["dy"], axis=2)
+    ut, uy, uyy = gradient(U, case_time, fields["dy"], axis=2)
+    _, ux, uxx = gradient(U, case_time, fields["dx"], axis=1)
+    vt, vy, vyy = gradient(V, case_time, fields["dy"], axis=2)
+    _, vx, vxx = gradient(V, case_time, fields["dx"], axis=1)
+    _, px, _ = gradient(P, case_time, fields["dx"], axis=1)
+    _, py, _ = gradient(P, case_time, fields["dy"], axis=2)
 
     n_time = U.shape[0]
     if crop_t < 0:
         raise ValueError("crop_t must be non-negative")
 
-    # Keep the transient start and limit tail cropping to at most half the data.
-    end_index = max(n_time - crop_t, (n_time + 1) // 2)
-    t_slice = slice(0, end_index)
-    print(f"Keeping {end_index}/{n_time} time layers; cropping {n_time - end_index} from the end")
+    # # Keep the transient start and limit tail cropping to at most half the data.
+    # end_index = max(n_time - crop_t, (n_time + 1) // 2)
+    # t_slice = slice(0, end_index)
+    # print(f"Keeping {end_index}/{n_time} time layers; cropping {n_time - end_index} from the end")
+
+    # instead of using t_slice, sample random points throughout the entire flow
+    num_total_rows = ut.shape[0]
+    num_desired_rows = 1000            # Choose a manageable number of rows for regression
+
+    row_indices = np.random.choice(min(num_total_rows,n_time), num_desired_rows, replace=False)
+
+
     x_slice = slice(crop_x, U.shape[1]-crop_x)
     y_slice = slice(crop_y, U.shape[2]-crop_y)
 
-    u_crop = U[t_slice, x_slice, y_slice]
-    v_crop = V[t_slice, x_slice, y_slice]
+    u_crop = U[row_indices, x_slice, y_slice]
+    v_crop = V[row_indices, x_slice, y_slice]
 
     # compute operator matrix and dictionary keys
     oper_dict, dictionary = build_ns_dict(
         u_crop,
         v_crop,
-        uy[t_slice, x_slice, y_slice],
-        uyy[t_slice, x_slice, y_slice],
-        ux[t_slice, x_slice, y_slice],
-        uxx[t_slice, x_slice, y_slice],
-        px[t_slice, x_slice, y_slice],
+        uy[row_indices, x_slice, y_slice],
+        uyy[row_indices, x_slice, y_slice],
+        ux[row_indices, x_slice, y_slice],
+        uxx[row_indices, x_slice, y_slice],
+        px[row_indices, x_slice, y_slice],
     )
     # compute operator matrix and dictionary keys
     oper_dict_v, dictionary_v = build_v_ns_dict(
         u_crop,
         v_crop,
-        vx[t_slice, x_slice, y_slice],
-        vxx[t_slice, x_slice, y_slice],
-        vy[t_slice, x_slice, y_slice],
-        vyy[t_slice, x_slice, y_slice],
-        py[t_slice, x_slice, y_slice],
+        vx[row_indices, x_slice, y_slice],
+        vxx[row_indices, x_slice, y_slice],
+        vy[row_indices, x_slice, y_slice],
+        vyy[row_indices, x_slice, y_slice],
+        py[row_indices, x_slice, y_slice],
     )
 
     return (
         oper_dict, # u operator array
-        ut[t_slice, x_slice, y_slice].reshape(-1),
+        ut[row_indices, x_slice, y_slice].reshape(-1),
         dictionary, # dictionary keys
         oper_dict_v, # v operator array
-        vt[t_slice, x_slice, y_slice].reshape(-1),
+        vt[row_indices, x_slice, y_slice].reshape(-1),
         dictionary_v, # v dictionary keys
         U.shape,
         u_crop.shape,
@@ -171,9 +224,9 @@ def build_ns_dict(u, v, uy, u_yy, ux, u_xx, p_x):
     ns_dict['u_xx'] = u_xx
     ns_dict['u_yy'] = u_yy
     ns_dict['p_x'] = p_x
-    ns_dict['u_px'] = u*p_x
-    ns_dict['v_px'] = v*p_x
-    ns_dict['uu_xx'] = u * u_xx
+    # ns_dict['u_px'] = u*p_x
+    # ns_dict['v_px'] = v*p_x
+    # ns_dict['uu_xx'] = u * u_xx
 
     for key, val in ns_dict.items():
         dict_keys.append(key)
@@ -194,10 +247,10 @@ def build_v_ns_dict(u, v, vx, v_xx, vy, v_yy, p_y):
         'vv_y': v * vy,
         'v_xx': v_xx,
         'v_yy': v_yy,
-        'p_y': p_y,
-        'vp_y': v*p_y,
-        'up_y': u*p_y,
-        'vv_yy': v*v_yy
+        'p_y': p_y
+        # 'vp_y': v*p_y,
+        # 'up_y': u*p_y,
+        # 'vv_yy': v*v_yy
     }
 
     for key, val in ns_dict.items():
@@ -318,164 +371,4 @@ def trainStridge(X, y, tol_values, lam, l0_penalty, seed=0):
         val_loss,
         evaluated_tol_values,
     )
-
-
-
-
-
-if __name__ == "__main__":
-
-    config.initialize_model_config() # initialize model
-
-    parser = argparse.ArgumentParser(description="Learn the startup Poiseuille PDE from saved data.")
-    parser.add_argument("--lam", type=float, default=1e-6)
-    # parser.add_argument("--tol_min", type=float, default=1e-8)
-    # parser.add_argument("--tol_max", type=float, default=1e-2)
-    parser.add_argument("--tol_min", type=float, default=1e-2)
-    parser.add_argument("--tol_max", type=float, default=0.15)
-    parser.add_argument("--num_tol", type=int, default=10)
-    parser.add_argument("--l0_penalty", type=float, default=1e-6)
-    parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--data_start", type=int, default=1)
-    parser.add_argument(
-        "--input_directories",
-        nargs="+",
-        default=[
-            os.path.join(os.path.dirname(__file__), "output_npz"),
-        ],
-    )
-    parser.add_argument("--crop_t", type=int, default=2000, help="discard this many time layers from the end")
-    parser.add_argument("--crop_y", type=int, default=1, help="discard this many spatial points near each wall")
-    parser.add_argument("--crop_x", type=int, default=1, help="discard this many spatial points near each wall")
-    parser.add_argument(
-        "--report",
-        type=str,
-        default=os.path.join(os.path.dirname(__file__), "stridge_report.md"),
-        help="path for the generated Markdown report",
-    )
-    args = parser.parse_args()
-
-    tol_values = np.logspace(np.log10(args.tol_min), np.log10(args.tol_max), args.num_tol)
-    print(tol_values)
-
-    input_directories = find_run_directories(args.input_directories)
-    if not input_directories:
-        raise FileNotFoundError(
-            "No data_t=*.npz snapshots found in the supplied input directories"
-        )
-    print(f"Loading {len(input_directories)} run directories")
-
-    case_results = [
-        load_case(
-            output_directory,
-            args.data_start,
-            args.crop_t,
-            args.crop_x,
-            args.crop_y,
-        )
-        for output_directory in input_directories
-    ]
-
-    oper_dict = np.concatenate([result[0] for result in case_results])
-    y = np.concatenate([result[1] for result in case_results])
-    dictionary = case_results[0][2]
-    if any(result[2] != dictionary for result in case_results[1:]):
-        raise ValueError("All cases must use the same U dictionary ordering")
-
-    x = oper_dict
-    (
-        w_best,
-        tol_best,
-        err_best,
-        val_error,
-        train_loss,
-        val_loss,
-        evaluated_tol_values_u,
-    ) = trainStridge(x, y, tol_values, args.lam, args.l0_penalty)
-
-    oper_dict_v = np.concatenate([result[3] for result in case_results])
-    y_v = np.concatenate([result[4] for result in case_results])
-    dictionary_v = case_results[0][5]
-    if any(result[5] != dictionary_v for result in case_results[1:]):
-        raise ValueError("All cases must use the same V dictionary ordering")
-
-    x_v = oper_dict_v
-    (
-        w_best_v,
-        tol_best_v,
-        err_best_v,
-        val_error_v,
-        train_loss_v,
-        val_loss_v,
-        evaluated_tol_values_v,
-    ) = trainStridge(
-        x_v, y_v, tol_values, args.lam, args.l0_penalty
-    )
-
-    datashape = [case_results[i][6] for i in range(len(input_directories))]
-    datashape_cropped = [case_results[i][7] for i in range(len(input_directories))]
-
-    try:
-        fig = plt.figure(figsize=(18, 12))
-        ax1 = fig.add_subplot(1, 2, 1)
-        ax2 = fig.add_subplot(1, 2, 2)
-        ax1.plot(evaluated_tol_values_u, train_loss)
-        ax1.plot(evaluated_tol_values_u, val_loss)
-        ax1.set_xscale("log")
-        ax1.legend(["Training", "Validation"])
-        u_loss_values = np.concatenate((train_loss, val_loss))
-        ax1.set_ylim(np.min(u_loss_values), np.max(u_loss_values))
-        ax1.set_title("Training and Validation Loss of Weights for U field")
-        ax1.set_xlabel("Tolerance")
-        ax1.set_ylabel("Loss")
-        ax2.plot(evaluated_tol_values_v, train_loss_v)
-        ax2.plot(evaluated_tol_values_v, val_loss_v)
-        ax2.set_xscale("log")
-        ax2.legend(["Training", "Validation"])
-        v_loss_values = np.concatenate((train_loss_v, val_loss_v))
-        ax2.set_ylim(np.min(v_loss_values), np.max(v_loss_values))
-        ax2.set_title("Training and Validation Loss of Weights for V field")
-        ax2.set_xlabel("Tolerance")
-        ax2.set_ylabel("Loss")
-        plt.show()
-    except Exception as error:
-        print(f"Warning: loss plots could not be displayed: {error}")
-    finally:
-        write_2d_markdown_report(
-        args.report,
-        w_best,
-        dictionary,
-        w_best_v,
-        dictionary_v,
-        datashape,
-        datashape_cropped,
-        tol_best,
-        err_best,
-        val_error,
-        tol_best_v,
-        err_best_v,
-        val_error_v,
-        data_start=args.data_start,
-        crop_settings={"t": args.crop_t, "x": args.crop_x, "y": args.crop_y},
-        lam=args.lam,
-        l0_penalty=args.l0_penalty,
-        u_reference_coefficients={
-            "uu_x": -config.c_advective,
-            "vu_y": -config.c_advective,
-            "u_xx": config.c_viscous,
-            "u_yy": config.c_viscous,
-            "p_x": -config.c_pressure,
-        },
-        v_reference_coefficients={
-            "uv_x": -config.c_advective,
-            "vv_y": -config.c_advective,
-            "v_xx": config.c_viscous,
-            "v_yy": config.c_viscous,
-            "p_y": -config.c_pressure,
-        },
-        input_directory=", ".join(input_directories),
-    )
-    print(f"Markdown U/V report written to: {args.report}")
-
-
 

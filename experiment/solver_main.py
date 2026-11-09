@@ -231,16 +231,19 @@ class NavierStokesSolver2d:
 
         
 class LidCavitySolver(NavierStokesSolver2d):
-    def __init__(self):
+    def __init__(self, side="N"):
         super().__init__()
+        self.side = side.upper()
+        if self.side not in {"N", "E", "S", "W"}:
+            raise ValueError("side must be one of 'N', 'E', 'S', or 'W'")
+
     def set_boundary_condition(self,U,V):
         lenU = U.shape
         # Apply north and south boundaries for U
-        lenU = U.shape
-        Unorth = 2*np.ones((lenU[0], 1)) - U[:,-1].reshape((lenU[0],1))  # set the last row of velocity field to be north boundary
-        Usouth = -U[:, 0].reshape((lenU[0],1)) # set the first row of velocity field to be south boundary
+        Unorth = (2.0 if self.side == "N" else 0.0) - U[:, -1].reshape((lenU[0], 1))
+        Usouth = (2.0 if self.side == "S" else 0.0) - U[:, 0].reshape((lenU[0], 1))
         U = np.concatenate((Usouth, U), axis=1)
-        U = np.concatenate((U, Unorth), axis=1) #u_1/2 = c1
+        U = np.concatenate((U, Unorth), axis=1)
         # Apply front and back boundaries for U
         lenU = U.shape
         Ueast = np.zeros((1, lenU[1]))
@@ -255,8 +258,8 @@ class LidCavitySolver(NavierStokesSolver2d):
         V = np.concatenate((V, Vnorth), axis=1)
         lenV = V.shape
         # Apply front and back boundaries for V
-        Veast = -V[-1, :].reshape((1, lenV[1]))
-        Vwest = -V[0, :].reshape((1, lenV[1]))
+        Veast = (2.0 if self.side == "E" else 0.0) - V[-1, :].reshape((1, lenV[1]))
+        Vwest = (2.0 if self.side == "W" else 0.0) - V[0, :].reshape((1, lenV[1]))
         V = np.concatenate((Vwest, V), axis=0)
         V = np.concatenate((V, Veast), axis=0)
 
@@ -265,7 +268,7 @@ class LidCavitySolver(NavierStokesSolver2d):
 class FourMovingWalls(NavierStokesSolver2d):
     def __init__(self):
         super().__init__()
-    def set_boundary_condition(self,U,V,u_wall=1.0):
+    def set_boundary_condition(self,U,V,u_wall=-1.0):
         # =========================================================
         # 1. HORIZONTAL VELOCITY (U)
         # =========================================================
