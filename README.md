@@ -1,154 +1,109 @@
-# Navier-Stokes Solver and STRidge Model
+# Navier-Stokes Solver and STRidge Models
 
-This repository contains finite-difference incompressible Navier-Stokes solvers and experiments that use Sequential Threshold Ridge Regression (STRidge) to identify PDE terms from generated data.
+This repository contains a 2-D finite-difference incompressible Navier-Stokes solver and STRidge experiments that identify terms in the momentum equations from saved simulation snapshots. The current workflow is organized around `numerical_solver/` and `stridge_model/models/`.
 
-## Contents
+## Project layout
 
 ```text
-2dsolver/                 Body-force-driven Poiseuille flow
-2dsolver_2movingwalls/    Two moving horizontal walls
-2dsolver_4movingwalls/    Four moving cavity walls
-2dsolver_lidcavity/       Standard 2-D lid-driven cavity
-3dsolver/                 3-D lid-driven cavity
-stridge_model/            Data generation, STRidge training, and visualisation
-reports/                  Project report source and build artefacts
+numerical_solver/
+  run_all.py                 Batch simulation entry point
+  run.py                     Single-run experiment script
+  config.py                  Solver parameters and output configuration
+  solver_main.py             Projection solver and flow boundary conditions
+  models/operators/          Advection, viscosity, pressure, and plotting operators
+  metadata.json              Registry of simulation parameters and output paths
+
+stridge_model/models/
+  advective_model/           2-D U/V momentum equation identification
+  onedir_model/              One-directional flow equation identification
+
+history_trials/              Archived experimental data and reports
+reports/                     Project report sources and build artefacts
 ```
 
-The solver variants are intentionally separate copies of the numerical modules. Each variant has its own boundary conditions and parameter setup.
+Generated simulation data is written under `stridge_model/` and is ignored by Git. It is not expected to be present in a fresh checkout.
 
 ## Requirements
 
-Use Python 3 with NumPy, SciPy, and Matplotlib. The repository does not currently include a `requirements.txt` or `pyproject.toml`.
+Use Python 3.10 or later with NumPy, SciPy, and Matplotlib. The repository does not currently provide a `requirements.txt` or `pyproject.toml`.
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install numpy scipy matplotlib
 ```
 
-On macOS, use `source .venv/bin/activate`; on Windows, activate the corresponding `Scripts` directory instead.
+On Windows, activate `.venv` from its `Scripts` directory instead.
 
-## Finite-difference solvers
+## Numerical solver
 
-The 2-D solvers use a staggered grid. Their time step follows this pattern:
+The solver uses a staggered grid and a projection step. Each time step applies the selected velocity boundary conditions, evaluates advection and viscosity, advances intermediate velocities, solves a sparse pressure Poisson equation, corrects the velocities, and saves an NPZ snapshot. The implemented flow classes are `Poiseuille`, `TwoMovingWalls`, `LidCavitySolver`, and `FourMovingWalls`.
 
-1. Apply velocity boundary conditions.
-2. Compute advection and viscous terms.
-3. Advance the intermediate velocity explicitly.
-4. Solve a pressure Poisson equation.
-5. Correct the velocity so that it is approximately divergence-free.
-6. Save snapshots and produce plots after convergence or the configured iteration limit.
+### Run the configured batch
 
-The main implementation is `lid_cav_solver.py`. Supporting modules implement advection, viscosity, divergence, boundary conditions, pressure solution, staggering, and plotting.
-
-### Run a 2-D case
-
-Run each solver from its own directory because the modules use local imports such as `from advective import advective`.
+Run from the repository root:
 
 ```bash
-cd 2dsolver
-python lid_cav_solver.py
+python numerical_solver/run_all.py
 ```
 
-Other 2-D cases:
+The active `FLOW_CONFIGS` in `numerical_solver/run_all.py` currently runs lid-cavity cases with the moving wall on each side and a four-moving-walls case. Other flow entries are present but commented out. Edit `FLOW_CONFIGS` and the parameters in `run_experiment()` to select other cases or change grid size, density, viscosity, time step, body force, and stopping conditions. The defaults use an 81 by 81 grid and can produce long runs.
 
-```bash
-cd 2dsolver_2movingwalls && python lid_cav_solver.py
-cd 2dsolver_4movingwalls && python lid_cav_solver.py
-cd 2dsolver_lidcavity && python lid_cav_solver.py
-```
-
-The Poiseuille-style variants centralise their physical and numerical parameters in `global_var.py`. Typical settings are a `31 x 31` grid, `max_ts = 10000`, density `rho = 920`, dynamic viscosity `viscosity = 0.081`, and body force `G = 9.81`. The actual `dt` is calculated from viscous and CFL limits. The lid-cavity variant keeps its parameters in `lid_cav_solver.py`.
-
-### Run the 3-D case
-
-```bash
-cd 3dsolver
-python lid_cav_solver.py
-```
-
-The 3-D solver uses a `31 x 31 x 31` grid, explicit stepping with `dt = 0.001`, and 100 time steps by default. It generates visualisations every ten steps rather than writing the same text snapshot layout as the 2-D solvers.
+`numerical_solver/run.py` is an alternative editable experiment script; its flow selection and parameter setup are hard-coded. The batch script is the documented entry point for the current set of cases.
 
 ### Solver output
 
-The 2-D solvers create these directories automatically and write one text file per saved iteration:
+The batch runner writes a numbered run directory under `stridge_model/output_stokes_npz/`, for example:
 
 ```text
-<solver>/output/
-  u_velocity_field/u_velocity_t=<iteration>.txt
-  v_velocity_field/v_velocity_t=<iteration>.txt
-  pressure_field/pressure_field_t=<iteration>.txt
+stridge_model/output_stokes_npz/
+  lidcavity_Nx81_sideN/run_001/data_t=1.npz
+  lidcavity_Nx81_sideN/run_001/data_t=2.npz
+  ...
 ```
 
-The 2-D post-processing scripts can be run from their solver directory after a simulation:
+Each compressed snapshot contains `u`, `v`, `p`, `dt`, `dx`, and `dy`. Velocity and pressure are stored on staggered grids. Run parameters and the output directory are appended to `numerical_solver/metadata.json`.
+
+The solver saves field plots periodically and at the end of a run. Plotting functions may open Matplotlib windows depending on the active backend.
+
+## STRidge models
+
+Both learners recursively find run directories containing `data_t=*.npz` files. They calculate time and spatial derivatives with `numpy.gradient`, build candidate-term matrices, fit STRidge models, and write Markdown reports. Supply parent directories that contain one or more run folders; do not point to an individual snapshot file.
+
+### 2-D momentum equations
+
+`stridge_model/models/advective_model/` builds separate candidate libraries for the horizontal and vertical momentum equations using velocity advection, second derivatives, and pressure gradients. Its configuration exposes `--input_directories`, `--data_start`, cropping options, STRidge parameters, and `--report`.
+
+The intended invocation from the repository root is:
 
 ```bash
-python velocityfieldplot.py
-python pressurefieldplot.py
-python compare_with_theory_plot.py
-python plot_loss.py
+python stridge_model/models/advective_model/run_stridge.py \
+  --input_directories stridge_model/output_stokes_npz \
+  --data_start 1 \
+  --report stridge_model/models/advective_model/stridge_report.md
 ```
 
-Some plotting functions call `plt.show()` and therefore expect an interactive Matplotlib backend. The 3-D plotting scripts save images in `3dsolver/velocity/` and `3dsolver/pressure/`.
+There are two current issues to resolve before this command runs in a clean checkout: `model_combined.py` imports `experiment.models.operators.stagger`, but the current solver package is `numerical_solver.models.operators`; and the model's default input directory points inside `advective_model/`, not to the solver's `stridge_model/output_stokes_npz/` output. The explicit input argument above addresses the path mismatch, but the stale import must also be updated.
 
-## STRidge workflow
+The current 2-D loader randomly samples 1,000 time layers without replacement, so each input run needs at least 1,000 saved snapshots. Its `--crop_t` option is accepted but does not currently affect that sampling. The random sample itself is not controlled by `--seed`; that seed is used for the train/validation split.
 
-STRidge builds a candidate library of fields and derivatives, fits the target time derivative, and thresholds small coefficients while selecting the tolerance with a validation score. For startup Poiseuille flow, the target equation is
+### One-directional equation
 
-$$u_t = g + \nu u_{yy},$$
+`stridge_model/models/onedir_model/` extracts a transverse velocity profile from the middle x-index of each snapshot and fits a one-dimensional candidate library, including `u*u_y`, `u*u_yy`, `u_y*u_yy`, `u`, `u_y`, `u_yy`, and a constant. It defaults to searching `one_dir_flow_output_npz/` beside the script and writes a Markdown report beside it.
 
-where `g = -(1/rho) * dpdx`.
-
-### 1. Generate reproducible training data
-
-The self-contained generator uses a backward-Euler solve for startup plane Poiseuille flow and stores both 1-D and repeated 2-D fields in an `.npz` file.
+Example using a directory containing run folders:
 
 ```bash
-cd stridge_model
-python generate_startup_poiseuille.py \
-  --output startup_poiseuille_data.npz \
-  --Ny 129 --Nx 16 --dt 5e-4 --t_end 1.0 \
-  --nu 0.05 --rho 1.0 --dpdx -1.0
+python stridge_model/models/onedir_model/run_stridge_one_dir.py \
+  --input_directories stridge_model/output_stokes_npz \
+  --data_start 1 \
+  --report stridge_model/models/onedir_model/stridge_model_1d_report.md
 ```
 
-Useful options include `--noise` and `--seed` for reproducible noisy measurements. The generated file contains `u`, `u2d`, `t`, `x`, `y`, `dt`, `dy`, `dx`, `nu`, `rho`, `dpdx`, `g`, and the analytical steady profile.
+At least three usable snapshots are required per run. `--data_start` defaults to 3000, so set it explicitly for shorter runs. Use `--crop_t` and `--crop_y` to discard temporal and near-wall samples; other options include `--lam`, `--tol_min`, `--tol_max`, `--num_tol`, `--l0_penalty`, and `--seed`.
 
-### 2. Learn the PDE
+## Reproducibility and data notes
 
-```bash
-cd stridge_model
-python learn_startup_poiseuille.py \
-  --input startup_poiseuille_data.npz \
-  --lam 1e-8 --tol_min 1e-8 --tol_max 1e-1 \
-  --num_tol 40 --l0_penalty 1e-6 --seed 0 \
-  --crop_t 1 --crop_y 2
-```
-
-The learner computes `u_t`, `u_y`, and `u_yy`, constructs a library containing constant, linear, polynomial, derivative, and product terms, and reports the selected tolerance and errors. Boundary and temporal cropping reduces finite-difference edge effects.
-
-### Other STRidge scripts
-
-These scripts are exploratory variants and expect particular existing data layouts:
-
-```bash
-cd stridge_model
-python model.py
-python model_2d.py
-python model_burger.py
-python visualize_data.py
-```
-
-`model.py` reads lid-cavity snapshots from `stridge_model/output_lidcav/`; `model_2d.py` reads 2-D velocity and pressure snapshots from `output_4movingwalls/`; and `model_burger.py` reads `burgers_shock.mat`. Check the input directories and snapshot numbering before running them. These scripts are not unified command-line applications and contain hard-coded data paths and experiment-specific candidate libraries.
-
-## Data and path caveats
-
-- Run solver modules from their variant directory so local imports resolve consistently.
-- STRidge snapshot learners require contiguous, correctly named files such as `u_velocity_t=10.txt`.
-- `learn_startup_poiseuille.py` currently imports `endtime` and `time_res` from `global_var.py`, although those names are not defined there. The import must be corrected before that script can run in the current checkout.
-- `visualize_data.py` refers to a `2d_stridge_model/` input path, while the checked-in Burgers data is under `stridge_model/`.
-- The root `test.py` is a tolerance-grid plotting experiment; it is not an automated solver test.
-- Text snapshots and generated images are experiment outputs, not a stable package API.
-
-## Reproducibility checklist
-
-Record the solver variant, grid dimensions, physical parameters, time step, number of iterations, boundary condition case, STRidge library, cropping values, regularisation parameter, tolerance range, and random seed with each result. This is especially important because most scripts currently store configuration in module-level constants rather than a shared configuration file.
+- Record the flow type, wall direction where applicable, grid dimensions, forcing, density, viscosity, time step, stopping conditions, STRidge tolerance range, regularisation, cropping, and random seed with each experiment.
+- Check `numerical_solver/metadata.json` for the parameters recorded by the simulation runner. The STRidge report records its input paths and fitting settings.
+- Snapshot data and generated reports are experiment outputs, not a stable package API. Input paths and run lengths should be checked before starting a training run.

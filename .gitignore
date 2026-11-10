@@ -10,15 +10,15 @@ output_startup/
 
 data_graphs/
 
-output/
-
 reports/
 
 plots/
 
 experimental_reports/
 
-output_npz/
+output_advect_npz/
+
+output_stokes_npz/
 
 old_data_experiment/
 
@@ -28,8 +28,8 @@ storage/
 
 old_models/
 
-good_results/
-
 history_trials/
 
 one_dir_flow_output_npz/
+
+one_dir_flow_vertical_npz/

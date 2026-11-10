@@ -1,0 +1,216 @@
+import numpy as np 
+import os
+import config
+
+
+def _percentage_error(learned, expected):
+    if expected == 0:
+        return "N/A"
+    return f"{abs(learned - expected) / abs(expected) * 100:.8e}%"
+
+def write_markdown_report(path, coefficients, descriptions, data_shape,
+                          crop_shape, tol_best, train_error,
+                          validation_error, data_start, crop_settings,
+                          lam, l0_penalty, parameters=None,
+                          reference_coefficients=None, input_directory=None,
+                          data_shape_labels="(t, x, y)", velocity_label="u"):
+    parameters = parameters or {
+        "rho": (config.rho, "kg m$^{-3}$", "Fluid density"),
+        "viscosity": (config.viscosity, "Pa s", "Dynamic viscosity"),
+        "nu": (config.nu, "m$^2$ s$^{-1}$", "Kinematic viscosity"),
+        f"{velocity_label}_max": (
+            config.u_max if velocity_label == "u" else config.v_max,
+            "m s$^{-1}$",
+            "Characteristic velocity",
+        ),
+        "D": (config.D, "m", "Characteristic length"),
+        "Re": (config.Re, "dimensionless", "Reynolds number"),
+        "Fx_ext": (config.Fx_ext, "m s$^{-2}$", "Body force"),
+        "Nx": (config.Nx, "cells", "Grid points in x"),
+        "Ny": (config.Ny, "cells", "Grid points in y"),
+        "dx": (config.dx, "m", "Grid spacing in x"),
+        "dy": (config.dy, "m", "Grid spacing in y"),
+        "dt": (config.dt, "s", "Time step"),
+        "epsilon": (config.epsilon, "-", "Numerical threshold"),
+    }
+    reference_coefficients = reference_coefficients or {
+        "uu_x": -config.c_advective,
+        "vu_y": -config.c_advective,
+        "u_xx": config.c_viscous,
+        "u_yy": config.c_viscous,
+        "p_x": -config.c_pressure,
+    }
+    lhs = f"{velocity_label}_t"
+    true_equation = [reference_coefficients.get(name, 0.0) for name in descriptions]
+    parameter_rows = [
+        f"| {label} | `{name}` | `{value:.8e}` | {unit} |"
+        for name, (value, unit, label) in parameters.items()
+    ]
+    report_lines = [
+        "# Physics Simulation and STRidge Identification Report",
+        "",
+        "> Numerical identification of the streamwise momentum equation from saved velocity and pressure fields.",
+        "",
+        "## 1. Simulation Parameters",
+        "",
+        "| Quantity | Symbol | Value | Unit |",
+        "|---|---:|---:|---|",
+        *parameter_rows,
+        "",
+        "## 2. Numerical Discretisation",
+        "",
+        "| Quantity | Symbol | Value | Unit |",
+        "|---|---:|---:|---|",
+        "| Parameters listed above are the values used by the selected solver. |  |  |  |",
+        "",
+        "## 3. Data and Pre-processing",
+        "",
+        "| Quantity | Value |",
+        "|---|---:|",
+        f"| Loaded field shape ${data_shape_labels}$ | `{data_shape}` |",
+        f"| Regression field shape ${data_shape_labels}$ | `{crop_shape}` |",
+        f"| Regression samples | `{int(np.prod(crop_shape)):,}` |",
+        f"| Dictionary terms | `{len(descriptions)}` |",
+        f"| First saved time index | `{data_start}` |",
+        f"| Temporal crop at each boundary | `{crop_settings['t']}` layers |",
+        f"| x-boundary crop | `{crop_settings['x']}` points |",
+        f"| y-boundary crop | `{crop_settings['y']}` points |",
+        "",
+        "## 4. Governing Equation Verification",
+        "",
+        "### Reference equation",
+        "",
+        f"`{format_equation(true_equation, descriptions, lhs=lhs)}`",
+        "",
+        "### Learned equation",
+        "",
+        f"`{format_equation(coefficients, descriptions, lhs=lhs)}`",
+        "",
+        "| Term | Reference coefficient | Learned coefficient | Percentage error |",
+        "|---|---:|---:|---:|",
+    ]
+    for learned, name, expected in zip(coefficients, descriptions, true_equation):
+        report_lines.append(
+            f"| `{name}` | `{expected:+.8e}` | `{learned:+.8e}` | `{_percentage_error(learned, expected)}` |"
+        )
+    report_lines.extend([
+        "",
+        "## 5. STRidge Selection and Error Metrics",
+        "",
+        "| Metric | Value |",
+        "|---|---:|",
+        f"| Regularisation parameter, $\\lambda$ | `{lam:.8e}` |",
+        f"| Selected tolerance | `{tol_best:.8e}` |",
+        f"| L0 penalty | `{l0_penalty:.8e}` |",
+        f"| Training RMSE | `{train_error:.8e}` |",
+        f"| Validation RMSE | `{validation_error:.8e}` |",
+        "",
+        "## 6. Reproducibility Notes",
+        "",
+        f"- Input directory: `{input_directory or 'not specified'}`",
+        f"- Fields were loaded starting at saved time index `{data_start}`.",
+        "- Derivatives were calculated using second-order edge-aware finite differences via `numpy.gradient`.",
+        "- The learned equation is compared term-by-term with the supplied reference coefficients.",
+        "",
+    ])
+    report_directory = os.path.dirname(os.path.abspath(path))
+    os.makedirs(report_directory, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as report_file:
+        report_file.write("\n".join(report_lines))
+
+
+def write_2d_markdown_report(
+        path, u_coefficients, u_descriptions, v_coefficients, v_descriptions,
+        data_shape, crop_shape, u_tol_best, u_train_error, u_validation_error,
+        v_tol_best, v_train_error, v_validation_error, data_start,
+        crop_settings, lam, l0_penalty, parameters=None,
+        u_reference_coefficients=None, v_reference_coefficients=None,
+        input_directory=None):
+    """Write the U and V momentum equations to one Markdown report."""
+    write_markdown_report(
+        path,
+        u_coefficients,
+        u_descriptions,
+        data_shape,
+        crop_shape,
+        u_tol_best,
+        u_train_error,
+        u_validation_error,
+        data_start,
+        crop_settings,
+        lam,
+        l0_penalty,
+        parameters=parameters,
+        reference_coefficients=u_reference_coefficients,
+        input_directory=input_directory,
+        velocity_label="u",
+    )
+
+    v_reference_coefficients = v_reference_coefficients or {
+        "uv_x": -config.c_advective,
+        "vv_y": -config.c_advective,
+        "v_xx": config.c_viscous,
+        "v_yy": config.c_viscous,
+        "p_y": -config.c_pressure,
+    }
+    v_true_equation = [
+        v_reference_coefficients.get(name, 0.0) for name in v_descriptions
+    ]
+    v_report_lines = [
+        "",
+        "## 7. Transverse Momentum Equation",
+        "",
+        "### Reference equation",
+        "",
+        f"`{format_equation(v_true_equation, v_descriptions, lhs='v_t')}`",
+        "",
+        "### Learned equation",
+        "",
+        f"`{format_equation(v_coefficients, v_descriptions, lhs='v_t')}`",
+        "",
+        "| Term | Reference coefficient | Learned coefficient | Percentage error |",
+        "|---|---:|---:|---:|",
+    ]
+    for learned, name, expected in zip(
+            v_coefficients, v_descriptions, v_true_equation):
+        v_report_lines.append(
+            f"| `{name}` | `{expected:+.8e}` | `{learned:+.8e}` | "
+            f"`{_percentage_error(learned, expected)}` |"
+        )
+    v_report_lines.extend([
+        "",
+        "### V STRidge Selection and Error Metrics",
+        "",
+        "| Metric | Value |",
+        "|---|---:|",
+        f"| Selected tolerance | `{v_tol_best:.8e}` |",
+        f"| Training RMSE | `{v_train_error:.8e}` |",
+        f"| Validation RMSE | `{v_validation_error:.8e}` |",
+        "",
+    ])
+    with open(path, "a", encoding="utf-8") as report_file:
+        report_file.write("\n".join(v_report_lines))
+
+
+def format_equation(coefficients, descriptions, lhs="u_t", coef_cutoff=1e-10):
+    # save active coeficcients as tuples in an array
+    active = []
+    for c, name in zip(coefficients, descriptions):
+        if abs(c) > coef_cutoff:
+            active.append((c, name))
+    if not active:
+        return f"{lhs} = 0"
+
+    pieces = []
+    for i, (c, name) in enumerate(active):
+        sign = "-" if c < 0 else "+"
+        mag = abs(c)
+        if name == "1":
+            term = f"{mag:.8e}*one"
+        else:
+            term = f"{mag:.8e}*{name}"
+        if i == 0:
+            pieces.append(term if c >= 0 else f"- {term}")
+        else:
+            pieces.append(f" {sign} {term}")
+    return f"{lhs} =" + "".join(pieces)
