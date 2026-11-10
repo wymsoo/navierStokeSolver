@@ -83,8 +83,6 @@ python stridge_model/models/advective_model/run_stridge.py \
   --report stridge_model/models/advective_model/stridge_report.md
 ```
 
-There are two current issues to resolve before this command runs in a clean checkout: `model_combined.py` imports `experiment.models.operators.stagger`, but the current solver package is `numerical_solver.models.operators`; and the model's default input directory points inside `advective_model/`, not to the solver's `stridge_model/output_stokes_npz/` output. The explicit input argument above addresses the path mismatch, but the stale import must also be updated.
-
 The current 2-D loader randomly samples 1,000 time layers without replacement, so each input run needs at least 1,000 saved snapshots. Its `--crop_t` option is accepted but does not currently affect that sampling. The random sample itself is not controlled by `--seed`; that seed is used for the train/validation split.
 
 ### One-directional equation
@@ -100,7 +98,7 @@ python stridge_model/models/onedir_model/run_stridge_one_dir.py \
   --report stridge_model/models/onedir_model/stridge_model_1d_report.md
 ```
 
-At least three usable snapshots are required per run. `--data_start` defaults to 3000, so set it explicitly for shorter runs. Use `--crop_t` and `--crop_y` to discard temporal and near-wall samples; other options include `--lam`, `--tol_min`, `--tol_max`, `--num_tol`, `--l0_penalty`, and `--seed`.
+At least three usable snapshots are required per run. `--data_start` defaults to 3000 to ensure steady flow. Use `--crop_t` and `--crop_y` to discard temporal and near-wall samples; other options include `--lam`, `--tol_min`, `--tol_max`, `--num_tol`, `--l0_penalty`, and `--seed`.
 
 ## Reproducibility and data notes
 
